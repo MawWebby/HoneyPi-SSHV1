@@ -1,13 +1,21 @@
-#include <iostream>
-#include <string>
-#include <sys/socket.h>
+//////////////////
+// Dependencies //
+//////////////////
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <unistd.h>
-#include <cstring>
+#include <sys/socket.h>
+#include <string.h>
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <ctime>
+#include <netdb.h>
 
-#define PORT 63599
 
+int startupchecks = 0;
+
+
+struct addrinfo hints, *res;
 
 int sock = 0, valread;
 struct sockaddr_in serv_addr;

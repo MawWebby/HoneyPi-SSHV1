@@ -25,7 +25,7 @@ RUN apt-get upgrade -y
 RUN apt-get install -y sudo
 RUN apt-get install -y libssh-dev
 RUN apt-get install -y iputils-ping curl bash cron
-RUN apt-get install -y apt-utils
+RUN apt-get install -y apt-utils dialog
 
 # This command runs your application, comment out this line to compile only
 CMD ["./honeypi"]
