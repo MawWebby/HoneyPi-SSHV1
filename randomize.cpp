@@ -11,7 +11,7 @@
 #include <iostream>
 
 
-const char* starter2 = "apt-get install -y ";
+const char* starter2 = "apt-get install -y -qq ";
 const char* endstring = " > nul:";
 
 int packages[30] = {};
@@ -24,6 +24,10 @@ void loginfo(std::string data2) {
     data2 = "[RANDOM] - " + data2;
     sendtolog(data2);
 }
+void logcritical(std::string data2) {
+    data2 = "[CRITICAL] - " + data2;
+    sendtolog(data2);
+}
 
 
 int main() {
@@ -33,6 +37,8 @@ int main() {
     char* rainbow = "";
     loginfo("Called to insert random packages...");    
     sleep(3);
+
+    int process = system("echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections");
 
     int i = 0;
     while (i <= 30) {
@@ -664,7 +670,15 @@ int main() {
     loginfo("installing packages");
 
     // PROCESS AT THE END
-    int process = system(buffer4);
+    process = process + system(buffer4);
+
+    if (process != 0) {
+        logcritical("Error Occurred in Installing Packages!");
+        logcritical("Could not continue");
+        return 1;
+        return 1;
+        return 1;
+    }
 
     sleep(3);
     loginfo("Installing Packages Complete...");
