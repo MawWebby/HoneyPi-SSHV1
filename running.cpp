@@ -19,15 +19,23 @@
 #include <libssh/libssh.h>
 #include <libssh/server.h>
 
+
+
+///////////////////
+//// VARIABLES ////
+///////////////////
+// CONSTANT STRINGS
 std::string heartbeat = "heartbeatSSH";
 std::string attacksend = "attacked";
 
+// CONSTANT DEBUGGING SCRIPTS
 const bool debug = true;
 const bool runtomain = true;
 
+// SYSTEM VARIABLES
 int encounterederrors = 0;
-
 int startupchecks = 0;
+bool mainhost = true;
 
 
 struct addrinfo hints, *res;
@@ -63,6 +71,12 @@ void logcritical(std::string data2) {
     sendtolog(data2);
 }
 
+
+
+
+/////////////////////////////
+//// SSH CONTROL SCRIPTS ////
+/////////////////////////////
 int authenticate(ssh_session session) {
     int PORT = 22;
     ssh_message message;
@@ -102,6 +116,7 @@ int authenticate(ssh_session session) {
 
 int handleSSHConnections() { 
     int PORT = 22;
+    int sshchecks = 0;
 
     ssh_bind sshbind = ssh_bind_new();
     ssh_session session = ssh_new();
@@ -112,35 +127,113 @@ int handleSSHConnections() {
 
     rc = ssh_bind_listen(sshbind);
     if (rc < 0) {
-        std::cerr << "Error listening to socket: " << ssh_get_error(sshbind) << std::endl;
-        return 1;
+        logcritical("Error listening to socket");
+        logcritical(ssh_get_error(sshbind));
+        logcritical("Dropping connection");
+        sshchecks = sshchecks + 1;
     }
 
     rc = ssh_bind_accept(sshbind, session);
     if (rc == SSH_ERROR) {
         std::cerr << "Error accepting connection: " << ssh_get_error(sshbind) << std::endl;
-        return 1;
+        sshchecks = sshchecks + 1;
     }
+
 
     if (ssh_handle_key_exchange(session)) {
         std::cerr << "Error handling key exchange: " << ssh_get_error(session) << std::endl;
-        return 1;
+        sshchecks = sshchecks + 1;
     }
+
 
     if (!authenticate(session)) {
         std::cerr << "Authentication failed" << std::endl;
         ssh_disconnect(session);
         ssh_free(session);
-        return 1;
+        sshchecks = sshchecks + 1;
     }
+    
+    sleep(1);
 
+    
     ssh_channel chan = ssh_channel_new(session);
-    if (ssh_channel_open_session(chan)) {
-        std::cerr << "Error opening channel" << std::endl;
-        return 1;
+    
+    if(chan == NULL) {
+        logcritical("SSH Channel started NULL!");
+    } else {
+        loginfo("SSH Channel Started Successfully");
+
+
+
+
+        // FUTURE HOME OF ATTACK COMMAND?
+
+
+
+
+
+
     }
 
-    ssh_channel_request_shell(chan);
+    sleep(1);
+
+
+    int sshstartsession = ssh_channel_open_session(chan);
+    std::cerr << sshstartsession << std::endl;
+
+    sleep(1);
+
+    if (sshstartsession != SSH_ERROR) {
+        std::cerr << "Error opening channel" << std::endl;
+        ssh_disconnect(session);
+        ssh_free(session);
+        sshchecks = sshchecks + 1;
+        std::cerr << ssh_get_error(chan) << std::endl;
+    } else {
+        loginfo("Channel started successfully");
+    }
+    
+    sleep(1);
+
+
+
+ //   int status = ssh_channel_request_shell(chan);
+
+//    if (status != SSH_OK) {
+ //       logcritical("UNABLE TO START INTERACTIVE TERMINAL");
+  //      sshchecks = sshchecks + 1;
+   // }
+
+
+    //
+
+    if (sshchecks != 0) {
+        logcritical("Something terrible has happened to SSH Server!");
+        logcritical("Dropping SSH Connection and attempting to restart");
+        logcritical(ssh_get_error(chan));
+        std::cerr << ssh_get_error(chan) << std::endl;
+    } else {
+
+        
+
+        char buffer23[1024];
+
+
+// ssh_channel_is_open(chan) && !ssh_channel_is_eof(chan)
+        while (true) {
+
+            int nbytes = ssh_channel_read(chan, buffer23, sizeof(buffer23), 0);
+            if (nbytes < 0)
+            return SSH_ERROR;
+        
+            if (nbytes > 0)
+            write(1, buffer23, nbytes);
+            loginfo(buffer23);
+        }
+    }
+
+
+    
 
     ssh_channel_send_eof(chan);
     ssh_channel_close(chan);
@@ -155,6 +248,12 @@ int handleSSHConnections() {
     sendtolog("worked");
 }
 
+
+
+
+///////////////////////////
+//// MAIN SETUP SCRIPT ////
+///////////////////////////
 void setup() {
     loginfo("finishing SSH Guest V1 startup...");
 
@@ -174,42 +273,47 @@ void setup() {
             logcritical("Unable to resolve hostname!");
             if (debug == true) {
                 loginfo("Not killing in debug mode");
+                mainhost = false;
             } else {
                 logcritical("Killing docker container");
                 encounterederrors = encounterederrors + 1;
+                mainhost = false;
                 return;
             }
         }
 
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(PORT);
-        serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
+        if (mainhost == true) {
 
-        freeaddrinfo(res);
+            serv_addr.sin_family = AF_INET;
+            serv_addr.sin_port = htons(PORT);
+            serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
 
-        //    std::cout << char(serv_addr.sin_addr) << std::endl;
+            freeaddrinfo(res);
 
-        // Create socket
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            logcritical("Socket creation error!");
-            if (debug == true) {
-                loginfo("Not killing in debug mode");
-            } else {
-                logcritical("Killing docker container");
-                encounterederrors = encounterederrors + 1;
-                return;
+            //    std::cout << char(serv_addr.sin_addr) << std::endl;
+
+            // Create socket
+            if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                logcritical("Socket creation error!");
+                if (debug == true) {
+                    loginfo("Not killing in debug mode");
+                } else {
+                    logcritical("Killing docker container");
+                    encounterederrors = encounterederrors + 1;
+                    return;
+                }
             }
-        }
 
-        // Connect to the server
-        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            logcritical("Connection failed!");
-            if (debug == true) {
-                loginfo("Not killing in debug mode");
-            } else {
-                logcritical("Killing docker container");
-                encounterederrors = encounterederrors + 1;
-                return;
+            // Connect to the server
+            if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+                logcritical("Connection failed!");
+                if (debug == true) {
+                    loginfo("Not killing in debug mode");
+                } else {
+                    logcritical("Killing docker container");
+                    encounterederrors = encounterederrors + 1;
+                    return;
+                }
             }
         }
     } else {
@@ -231,6 +335,13 @@ void setup() {
 
 }
 
+
+
+
+
+/////////////////////////////
+//// MAIN LOOPING SCRIPT ////
+/////////////////////////////
 int main() {
 
     setup();
@@ -244,9 +355,8 @@ int main() {
     
 
     while(true) {
-        if (runtomain == true) {
+        if (runtomain == true && mainhost == true) {
             send(sock, heartbeat.c_str(), heartbeat.size(), 0);
-            std::cerr << heartbeat << std::endl;
         }
         sleep(8);
         loginfo("heartbeatSSH");

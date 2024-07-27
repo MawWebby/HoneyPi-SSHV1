@@ -98,7 +98,7 @@ int setup() {
     sendtolog("Hello, World");
     sendtolog("HoneyPi - GUEST Docker");
     sendtolog("Program by Matthew Whitworth (MawWebby)");
-    sendtolog("Version #" + honeyversion);
+    sendtolog("Version " + honeyversion);
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
