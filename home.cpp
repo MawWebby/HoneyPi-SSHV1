@@ -15,6 +15,7 @@
 using namespace std;
 
 
+const bool skiprandom = true;
 
 
 /////////////////
@@ -22,7 +23,7 @@ using namespace std;
 /////////////////
 
 // CONSTANT VARIABLES
-const string honeyversion = "0.0.1";
+const string honeyversion = "0.0.2";
 const int heartbeattime = 10;
 
 // SYSTEM VARIABLES
@@ -90,13 +91,6 @@ int createreport() {
 }
 
 
-
-/////////////////////////
-// THE MAIN CRASH LOOP //
-/////////////////////////
-
-
-
 ////////////////////////////
 // THE MAIN SETUP SCRIPTS //
 //////////////////////////// 
@@ -147,17 +141,13 @@ int setup() {
 
 
 
-    // PROCESS SYSTEM
-    sendtologopen("[INFO] - Processing System...");
-    sleep(2);
-
-
     // RANDOMIZING SYSTEM
-    sendtologopen("[INFO] -  RANDOMIZING System...");
-    int randomizevalue = system("./randomize");
-
-    sendtolog("[INFO] - Guest VM with SSH has Started!");
-
+    if (skiprandom == false) {
+        int randomizevalue = system("./randomize");
+    } else {
+        int randomizevalue = system("./run");
+    }
+    
 }
 
 int main() {
