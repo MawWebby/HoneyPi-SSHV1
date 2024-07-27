@@ -1,33 +1,40 @@
-# GCC support can be specified at major, minor, or micro version
-# (e.g. 8, 8.2 or 8.2.0).
-# See https://hub.docker.com/r/library/gcc/ for all supported GCC
-# tags from Docker Hub.
-# See https://docs.docker.com/samples/library/gcc/ for more on how to use this image
+# Image
 FROM gcc:latest
 
-# These commands copy your files into the specified directory in the image
-# and set that as the working location
-COPY . /usr/src/honeypi
-WORKDIR /usr/src/honeypi
-
-# This command compiles your app using GCC, adjust for your source code
-RUN g++ -o honeypi home.cpp
-RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp
-
-
-# REMOVE UNNEEDED PACKAGE
-RUN apt-get remove openssh-server -y
-
-# INSTALL NEEDED PACKAGES
+# Install Needed Packages
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y sudo
 RUN apt-get install -y libssh-dev
 RUN apt-get install -y iputils-ping curl bash cron
 RUN apt-get install -y apt-utils dialog
+RUN apt-get install -y openssh-client
 
-# This command runs your application, comment out this line to compile only
-CMD ["./honeypi"]
+# DIRECTORY FOR SSH KEYS
+#RUN mkdir /etc/ssh
 
-LABEL Name=honeypotpi Version=0.0.1
+# SSH-Keygen Commands
+RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && \
+    ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' && \
+    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+
+# Remove Unneeded Dependencies
+RUN apt-get remove openssh-server openssh-client -y
+
+# Set Files and Working Directory
+COPY . /usr/src/honeypi
+WORKDIR /usr/src/honeypi
+
+# Compile C++ Code
+RUN g++ -o honeypi home.cpp
+RUN g++ -o randomize randomize.cpp
+RUN g++ -o run running.cpp -lssh
+
+# Expose the SSH port
+EXPOSE 22
+
+# Start Application Command
+ENTRYPOINT ["./honeypi"]
+
+# Branch and Version Stuff
+LABEL Name=honeypotpi Version=0.0.2
