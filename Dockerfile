@@ -16,7 +16,9 @@ RUN apt-get install -y openssh-client
 # SSH-Keygen Commands
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && \
     ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' && \
-    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' 
+#    ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''
+
 
 # Remove Unneeded Dependencies
 RUN apt-get remove openssh-server openssh-client -y
@@ -26,9 +28,10 @@ COPY . /usr/src/honeypi
 WORKDIR /usr/src/honeypi
 
 # Compile C++ Code
-RUN g++ -o honeypi home.cpp
+RUN g++ -o honeypi start.cpp
 RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp -lssh
+RUN g++ -o run running.cpp
+RUN gcc -o ssh mainsshserverthreads.c -lssh
 
 # Expose the SSH port
 EXPOSE 22
