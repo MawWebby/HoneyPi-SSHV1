@@ -113,16 +113,13 @@ void logcritical(std::string data2) {
 ////////////////////////////////////////// 
 static void set_default_keys(ssh_bind sshbind, int rsa_already_set, int dsa_already_set, int ecdsa_already_set) {
     if (!rsa_already_set) {
-        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY,
-                             KEYS_FOLDER "ssh_host_rsa_key");
+        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY, KEYS_FOLDER "ssh_host_rsa_key");
     }
     if (!dsa_already_set) {
-        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_DSAKEY,
-                             KEYS_FOLDER "ssh_host_dsa_key");
+        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_DSAKEY, KEYS_FOLDER "ssh_host_dsa_key");
     }
     if (!ecdsa_already_set) {
-        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_ECDSAKEY,
-                             KEYS_FOLDER "ssh_host_ecdsa_key");
+        ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_ECDSAKEY, KEYS_FOLDER "ssh_host_ecdsa_key");
     }
 }
 
@@ -171,8 +168,6 @@ static int data_function(ssh_session session, ssh_channel channel, void *data, u
     (void) channel;
     (void) is_stderr;
 
-    fprintf(stderr, "21\n");
-
     if (len == 0 || cdata->pid < 1 || kill(cdata->pid, 0) < 0) {
         return 0;
     }
@@ -200,15 +195,14 @@ static int pty_request(ssh_session session, ssh_channel channel, const char *ter
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    fprintf(stderr, "maybe\n");
+    loginfo("Set Size of SSH Terminal Window");
 
 
-
-    if (openpty(&cdata->pty_master, &cdata->pty_slave, NULL, NULL,
-                cdata->winsize) != 0) {
-        fprintf(stderr, "Failed to open pty\n");
+    if (openpty(&cdata->pty_master, &cdata->pty_slave, NULL, NULL, cdata->winsize) != 0) {
+        logcritical("Failed to Open PTY!");
         return SSH_ERROR;
     }
+
     return SSH_OK;
 }
 
@@ -223,12 +217,13 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    fprintf(stderr, "22\n");
+    loginfo("Resizing SSH Terminal Window");
 
     if (cdata->pty_master != -1) {
         return ioctl(cdata->pty_master, TIOCSWINSZ, cdata->winsize);
     }
 
+    logcritical("Failed to Resize PTY!");
     return SSH_ERROR;
 }
 
@@ -238,25 +233,36 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
 
 ///////////////////////////////////////////
 ///////////////////////////////////////////
-//// PTY TERMINAL EXECUTION SHELL LOOP ////
+//// PTY TERMINAL EXECUTION SHELL LOOP //// - IMPORTANT EXECUTION LOOP
 ///////////////////////////////////////////
 ///////////////////////////////////////////
 static int exec_pty(const char *mode, const char *command, struct channel_data_struct *cdata) {
 
-    fprintf(stderr, "27\n");
+    loginfo("Starting PTY SSH Terminal");
     switch(cdata->pid = fork()) {
         case -1:
             close(cdata->pty_master);
             close(cdata->pty_slave);
+            logcritical("Failed to Fork PTY!");
             fprintf(stderr, "Failed to fork\n");
             return SSH_ERROR;
         case 0:
-            fprintf(stderr, "TOMASTER\n");
+            
             close(cdata->pty_master);
             if (login_tty(cdata->pty_slave) != 0) {
                 exit(1);
             }
-            fprintf(stderr, "35\n");
+
+
+
+
+
+
+
+            // NEW LOOP OR NEW FILE EVEN!!!
+
+
+
 
             // HANDOFF!!!
 
