@@ -71,6 +71,33 @@ static void set_default_keys(ssh_bind sshbind,
                              int rsa_already_set,
                              int dsa_already_set,
                              int ecdsa_already_set) {
+
+
+////////////////////////////
+// Send to Logger Scripts //
+////////////////////////////
+void sendtolog(std::string data2) {
+    std::cout << data2 << std::endl;
+}
+void sendtologopen(std::string data2) {
+    std::cout << data2;
+}
+void sendtologclosed(std::string data2) {
+    std::cout << data2 << std::endl;
+}
+void loginfo(std::string data2) {
+    data2 = "[INFO] - " + data2;
+    sendtolog(data2);
+}
+void logwarning(std::string data2) {
+    data2 = "[WARNING] - " + data2;
+    sendtolog(data2);
+}
+void logcritical(std::string data2) {
+    data2 = "[CRITICAL] - " + data2;
+    sendtolog(data2);
+}
+
     if (!rsa_already_set) {
         ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY,
                              KEYS_FOLDER "ssh_host_rsa_key");
