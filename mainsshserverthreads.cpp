@@ -18,7 +18,7 @@ The goal is to show the API in action.
 ////////////////////////////////
 const bool debugmode = false;
 
-char authorizedkeys[DEF_STR_SIZE] = {0};
+
 
 
 ////////////////////////////////////
@@ -28,8 +28,9 @@ char authorizedkeys[DEF_STR_SIZE] = {0};
 ////////////////////////////////////
 #include <pty.h>
 #include <utmp.h>
-#include <string.h>
+#include <string>
 #include <unistd.h>
+#include <iostream>
 
 #include <libssh/callbacks.h>
 #include <libssh/server.h>
@@ -73,7 +74,21 @@ char authorizedkeys[DEF_STR_SIZE] = {0};
 #define SFTP_SERVER_PATH "/usr/lib/sftp-server"
 #define DEF_STR_SIZE 1024
 
+#undef ssh_channel_callbacks_struct
+/*
+#define ssh_channel_callbacks_struct {
+    .userdata = 0,
+    .channel_pty_request_function = 0,
+    .channel_pty_window_change_function = 0,
+    .channel_shell_request_function = 0,
+    .channel_exec_request_function = 0,
+    .channel_data_function = 0,
+    .channel_subsystem_request_function = 0
+}
+*/
 
+
+char authorizedkeys[DEF_STR_SIZE] = {0};
 
 
 
@@ -244,7 +259,6 @@ static int exec_pty(const char *mode, const char *command, struct channel_data_s
             close(cdata->pty_master);
             close(cdata->pty_slave);
             logcritical("Failed to Fork PTY!");
-            fprintf(stderr, "Failed to fork\n");
             return SSH_ERROR;
         case 0:
             
@@ -268,6 +282,7 @@ static int exec_pty(const char *mode, const char *command, struct channel_data_s
 
             fprintf(stderr, "Start of new command line\n");
             fprintf(stderr, "Hello, World!\n");
+            loginfo("TEST123");
             
 
             //execl("/bin/sh", "sh", mode, command, NULL);
@@ -618,14 +633,17 @@ static void handle_session(ssh_event event, ssh_session session) {
         .authenticated = 0
     };
 
+     
     struct ssh_channel_callbacks_struct channel_cb = {
+        // REORDERED STRUCT
         .userdata = &cdata,
-        .channel_pty_request_function = pty_request,
-        .channel_pty_window_change_function = pty_resize,
-        .channel_shell_request_function = shell_request,
-        .channel_exec_request_function = exec_request,
         .channel_data_function = data_function,
+        .channel_pty_request_function = pty_request,
+        .channel_shell_request_function = shell_request,
+        .channel_pty_window_change_function = pty_resize,
+        .channel_exec_request_function = exec_request,
         .channel_subsystem_request_function = subsystem_request
+
     };
 
     struct ssh_server_callbacks_struct server_cb = {
