@@ -13,6 +13,12 @@ The goal is to show the API in action.
 
 
 
+////////////////////////////////
+////// CONSTANT VARIABLES //////
+////////////////////////////////
+const bool debugmode = false;
+
+char authorizedkeys[DEF_STR_SIZE] = {0};
 
 
 ////////////////////////////////////
@@ -20,7 +26,6 @@ The goal is to show the API in action.
 //// DEPENDENCIES / DEFINITIONS ////
 ////////////////////////////////////
 ////////////////////////////////////
-
 #include <pty.h>
 #include <utmp.h>
 #include <string.h>
@@ -66,11 +71,11 @@ The goal is to show the API in action.
 #define BUF_SIZE 1048576
 #define SESSION_END (SSH_CLOSED | SSH_CLOSED_ERROR)
 #define SFTP_SERVER_PATH "/usr/lib/sftp-server"
+#define DEF_STR_SIZE 1024
 
-static void set_default_keys(ssh_bind sshbind,
-                             int rsa_already_set,
-                             int dsa_already_set,
-                             int ecdsa_already_set) {
+
+
+
 
 
 ////////////////////////////
@@ -98,6 +103,15 @@ void logcritical(std::string data2) {
     sendtolog(data2);
 }
 
+
+
+
+
+
+//////////////////////////////////////////
+// DETERMINE PUBKEY/PRIVATE KEY OPTIONS //
+////////////////////////////////////////// 
+static void set_default_keys(ssh_bind sshbind, int rsa_already_set, int dsa_already_set, int ecdsa_already_set) {
     if (!rsa_already_set) {
         ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_RSAKEY,
                              KEYS_FOLDER "ssh_host_rsa_key");
@@ -111,8 +125,8 @@ void logcritical(std::string data2) {
                              KEYS_FOLDER "ssh_host_ecdsa_key");
     }
 }
-#define DEF_STR_SIZE 1024
-char authorizedkeys[DEF_STR_SIZE] = {0};
+
+
 
 
 /* A userdata struct for channel. */
@@ -150,8 +164,7 @@ struct session_data_struct {
 
 
 // COMES THROUGH HERE?
-static int data_function(ssh_session session, ssh_channel channel, void *data,
-                         uint32_t len, int is_stderr, void *userdata) {
+static int data_function(ssh_session session, ssh_channel channel, void *data, uint32_t len, int is_stderr, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *) userdata;
 
     (void) session;
@@ -170,13 +183,12 @@ static int data_function(ssh_session session, ssh_channel channel, void *data,
 
 
 
-
-
-
-
-static int pty_request(ssh_session session, ssh_channel channel,
-                       const char *term, int cols, int rows, int py, int px,
-                       void *userdata) {
+///////////////////////////////////////
+///////////////////////////////////////
+//// LOOPS FOR PTY TERMINAL SIZING ////
+///////////////////////////////////////
+///////////////////////////////////////
+static int pty_request(ssh_session session, ssh_channel channel, const char *term, int cols, int rows, int py, int px, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *)userdata;
 
     (void) session;
@@ -200,8 +212,7 @@ static int pty_request(ssh_session session, ssh_channel channel,
     return SSH_OK;
 }
 
-static int pty_resize(ssh_session session, ssh_channel channel, int cols,
-                      int rows, int py, int px, void *userdata) {
+static int pty_resize(ssh_session session, ssh_channel channel, int cols, int rows, int py, int px, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *)userdata;
 
     (void) session;
@@ -221,8 +232,16 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols,
     return SSH_ERROR;
 }
 
-static int exec_pty(const char *mode, const char *command,
-                    struct channel_data_struct *cdata) {
+
+
+
+
+///////////////////////////////////////////
+///////////////////////////////////////////
+//// PTY TERMINAL EXECUTION SHELL LOOP ////
+///////////////////////////////////////////
+///////////////////////////////////////////
+static int exec_pty(const char *mode, const char *command, struct channel_data_struct *cdata) {
 
     fprintf(stderr, "27\n");
     switch(cdata->pid = fork()) {
@@ -255,6 +274,18 @@ static int exec_pty(const char *mode, const char *command,
     return SSH_OK;
 }
 
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//// PTY TERMINAL SINGLE COMMAND EXECUTION SHELL ////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 static int exec_nopty(const char *command, struct channel_data_struct *cdata) {
     int in[2], out[2], err[2];
 
@@ -314,8 +345,17 @@ stdin_failed:
     return SSH_ERROR;
 }
 
-static int exec_request(ssh_session session, ssh_channel channel,
-                        const char *command, void *userdata) {
+
+
+
+
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//// PTY TERMINAL SINGLE COMMAND EXECUTION SHELL ////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+static int exec_request(ssh_session session, ssh_channel channel, const char *command, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *) userdata;
 
     fprintf(stderr, "32\n");
@@ -333,8 +373,17 @@ static int exec_request(ssh_session session, ssh_channel channel,
     return exec_nopty(command, cdata);
 }
 
-static int shell_request(ssh_session session, ssh_channel channel,
-                         void *userdata) {
+
+
+
+
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//// SHELL REQUEST START SHELL EXECUTION LOOP ///////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+static int shell_request(ssh_session session, ssh_channel channel, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *) userdata;
 
     (void) session;
@@ -353,8 +402,18 @@ static int shell_request(ssh_session session, ssh_channel channel,
     return SSH_OK;
 }
 
-static int subsystem_request(ssh_session session, ssh_channel channel,
-                             const char *subsystem, void *userdata) {
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+//// SUBSYSTEM REQUESTED LOOP (NOT CURRENTLY SUPPORTED) ///////
+///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+static int subsystem_request(ssh_session session, ssh_channel channel, const char *subsystem, void *userdata) {
     /* subsystem requests behave simillarly to exec requests. */
     if (strcmp(subsystem, "sftp") == 0) {
         return exec_request(session, channel, SFTP_SERVER_PATH, userdata);
@@ -362,8 +421,17 @@ static int subsystem_request(ssh_session session, ssh_channel channel,
     return SSH_ERROR;
 }
 
-static int auth_password(ssh_session session, const char *user,
-                         const char *pass, void *userdata) {
+
+
+
+
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+//// AUTHORIZE SSH THROUGH PASSWORD METHOD ///////
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+static int auth_password(ssh_session session, const char *user, const char *pass, void *userdata) {
     struct session_data_struct *sdata = (struct session_data_struct *) userdata;
 
     (void) session;
@@ -377,12 +445,18 @@ static int auth_password(ssh_session session, const char *user,
     return SSH_AUTH_DENIED;
 }
 
-static int auth_publickey(ssh_session session,
-                          const char *user,
-                          struct ssh_key_struct *pubkey,
-                          char signature_state,
-                          void *userdata)
-{
+
+
+
+
+
+
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//// AUTHORIZE SSH THROUGH PUBLIC KEY METHOD ///////
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+static int auth_publickey(ssh_session session, const char *user, struct ssh_key_struct *pubkey, char signature_state, void *userdata) {
     struct session_data_struct *sdata = (struct session_data_struct *) userdata;
 
     (void) user;
@@ -424,6 +498,18 @@ static int auth_publickey(ssh_session session,
     return SSH_AUTH_DENIED;
 }
 
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+//// OPEN SSH CHANNELS UPON RECEIVING CONNECTION ////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 static ssh_channel channel_open(ssh_session session, void *userdata) {
     struct session_data_struct *sdata = (struct session_data_struct *) userdata;
 
@@ -438,16 +524,11 @@ static ssh_channel channel_open(ssh_session session, void *userdata) {
 
 
 
-
-
-
-
-
-
-
-
-
-
+//////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+//// SEND UPDATED INFORMATION BACK ON SSH TUNNEL (STDOUT) ////
+//////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 static int process_stdout(socket_t fd, int revents, void *userdata) {
     char buf[BUF_SIZE];
     int n = -1;
@@ -473,17 +554,11 @@ static int process_stdout(socket_t fd, int revents, void *userdata) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+//////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+//// SEND UPDATED INFORMATION BACK ON SSH TUNNEL (STDERR) ////
+//////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 static int process_stderr(socket_t fd, int revents, void *userdata) {
     char buf[BUF_SIZE];
     int n = -1;
@@ -498,6 +573,13 @@ static int process_stderr(socket_t fd, int revents, void *userdata) {
 
     return n;
 }
+
+
+
+
+
+
+
 
 static void handle_session(ssh_event event, ssh_session session) {
     int n;
@@ -610,7 +692,6 @@ static void handle_session(ssh_event event, ssh_session session) {
 
 
 
-// IMPORTANT LINES
         cdata.event = event; // DECLARATION?
 
 
@@ -680,11 +761,21 @@ static void handle_session(ssh_event event, ssh_session session) {
     }
 }
 
+
+
+
+
+
 /* SIGCHLD handler for cleaning up dead children. */
 static void sigchld_handler(int signo) {
     (void) signo;
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
+
+
+
+
+
 
 int main(int argc, char **argv) {
     ssh_bind sshbind;
