@@ -30,7 +30,7 @@ WORKDIR /usr/src/honeypi
 # Compile C++ Code
 RUN g++ -o honeypi start.cpp
 RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp
+RUN g++ -o run running.cpp -lssh
 RUN g++ -o ssh mainsshserverthreads.cpp -lssh
 
 # Expose the SSH port
