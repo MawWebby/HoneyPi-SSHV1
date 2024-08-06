@@ -104,6 +104,8 @@ int setup() {
     // DELAY FOR SYSTEM TO START FURTHER
     sleep(5);
 
+    int testing = system("./debug");
+
 
     // CHECK FOR SYSTEM UPDATES
     sendtologopen("[INFO] - Checking for Updates...");

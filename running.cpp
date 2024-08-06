@@ -19,10 +19,16 @@
 
 
 
-
-
-
-
+// TEST CODE
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <future>
+std::mutex mtx;
+std::condition_variable cv;
+bool ready = false;
+int shared_data = 0;
 
 
 
@@ -153,8 +159,9 @@ bool attacked = false;
 
 
 // COMMUNICATION VARIABLES
-bool logvariableset = false;
+volatile bool logvariableset = false;
 std::string sshterminals[255] = {};
+//std::vector<std::string> sshterminals(255, "");
 
 
 struct addrinfo hints, *res;
@@ -163,6 +170,12 @@ int sock, valread;
 struct sockaddr_in serv_addr;
 std::string hello = "Hello from client";
 char buffer[1024] = {0};
+
+
+// SSH VARIABLES
+std::string syntheticuser = "";
+std::string syntheticpass = "";
+int authenticationtries = 98;
 
 
 
@@ -202,15 +215,30 @@ void logcritical(std::string data2) {
 ////////////////////////////////////
 ////////////////////////////////////
 int datawaiting() {
+    logcritical(sshterminals[0]);
+    std::unique_lock<std::mutex> lock(mtx);
+    while (!ready) {
+        cv.wait(lock);
+        logwarning("Unable to secure SSH Lock!");
+        sleep(1);
+    }
+    logcritical(sshterminals[0]);
     if (logvariableset == true) {
+        loginfo("VARIABLE SET");
+        cv.notify_all();
         return 1;
     } else {
-        if (sshterminals[0] != NULL) {
+        if (sshterminals[0] != "") {
+            loginfo("VARIABLE SET");
+            cv.notify_all();
             return 1;
         } else {
+            loginfo("VARIABLE NOT SET");
+            cv.notify_all();
             return 0;
         }
     }
+    
 }
 
 
@@ -221,6 +249,14 @@ int datawaiting() {
 ////////////////////////////////////
 ////////////////////////////////////
 std::string readtomainstring(int numbertoread) {
+    std::unique_lock<std::mutex> lock(mtx);
+    while (!ready) {
+        cv.wait(lock);
+        logwarning("Unable to secure SSH Lock!");
+        sleep(1);
+    }
+    ready = true;
+    cv.notify_all();
     return sshterminals[numbertoread];
 }
 
@@ -231,24 +267,57 @@ std::string readtomainstring(int numbertoread) {
 //// WRITE FROM SSH THREAD SCRIPT //// 
 //////////////////////////////////////
 //////////////////////////////////////
-int writefromsshstring(std::string stringtoinsert) {
+int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
+    std::unique_lock<std::mutex> lock(mtx);
+    loginfo("true");
+    while (!ready) {
+        logwarning("Unable to secure SSH Lock!");
+        cv.wait(lock);
+        
+    }
+
+    ready = false;
+    cv.notify_all();
+
+    loginfo("not true");
     bool completion22 = false;
     int testers = 0;
 
-    if (stringtoinsert == NULL) {
+    if (stringtoinsert == "" && chartoinsert == "") {
         logcritical("RECEIVED EMPTY INPUT STRING, NOT CONTINUING!");
+        cv.notify_all();
         return 1;
     } else {
+
+        // HELPER TO CONVERT CHAR TO STRING
+        if (chartoinsert != "") {
+            stringtoinsert = chartoinsert;
+            loginfo(stringtoinsert);
+        }
+
+        loginfo(stringtoinsert);
+
         while(completion22 == false) {
             if (testers == 254) {
                 logcritical("LOG OVERFLOW ERROR!");
                 logcritical("MARKING AS ERROR AND ENDING SESSION!");
                 completion22 = true;
+                logvariableset = true;
+                ready = true;
+                cv.notify_all();
                 return 1;
             }
 
-            if (sshterminals[testers] == NULL) {
+            if (sshterminals[testers] == "") {
                 sshterminals[testers] = stringtoinsert;
+                completion22 = true;
+                logvariableset = true;
+                loginfo("Logged message");
+                logwarning(sshterminals[testers]);
+                logcritical(std::__cxx11::to_string(testers));
+                ready = true;
+                cv.notify_all();
+                return 0;
             } else {
                 testers = testers + 1;
             }
@@ -264,17 +333,25 @@ int writefromsshstring(std::string stringtoinsert) {
 //////////////////////////////////////
 //////////////////////////////////////
 int clearsshterminals() {
-    datawaiting = false;
+    std::unique_lock<std::mutex> lock(mtx);
+    while (!ready) {
+        cv.wait(lock);
+        logwarning("Unable to secure SSH Lock!");
+        sleep(1);
+    }
+    logvariableset = false;
 
     int goats = 0;
     while (goats <= 255) {
-        sshterminals[goats] = NULL;
+        sshterminals[goats] = "";
         goats = goats + 1;
     }
 
-    if (sshterminals[2] != NULL) {
+    if (sshterminals[2] != "") {
+        cv.notify_all();
         return 1;
     } else {
+        cv.notify_all();
         return 0;
     }
 }
@@ -629,9 +706,51 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
     (void) session;
 
-    if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
-        sdata->authenticated = 1;
-        return SSH_AUTH_SUCCESS;
+    int binary = 0;
+
+    // TRUE PASSWORD CONFIGURATION
+    if (debugmode == true) {
+        if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
+            sdata->authenticated = 1;
+            return SSH_AUTH_SUCCESS;
+        }
+    } else {
+
+
+        // WASTE Protocol
+        loginfo("Waste 1.0.0");
+        if (sdata->auth_attempts >= authenticationtries) {
+            char* usernamet = "US: ";
+            char* passwordt = "PW: ";
+            strcat(usernamet, user);
+            strcat(passwordt, pass);
+            syntheticuser = user;
+            syntheticpass = pass;
+            loginfo("check");
+            binary = writefromsshstring("", usernamet);
+            binary = binary + writefromsshstring("", passwordt);
+
+            if (binary != 0) {
+                logcritical("Success error occurred!");
+            } else {
+                sdata->authenticated = 1;
+                return SSH_AUTH_SUCCESS;
+            }
+        } else {
+            char* usernamet = "US: ";
+            char* passwordt = "PW: ";
+            strcat(usernamet, user);
+            strcat(passwordt, pass);
+            binary = writefromsshstring("", usernamet);
+            binary = binary + writefromsshstring("", passwordt);
+        }
+
+    }
+
+    if (binary != 0) {
+        logcritical("an error occurred saving information!");
+        sdata->auth_attempts++;
+        return SSH_AUTH_DENIED;
     }
 
     sdata->auth_attempts++;
@@ -849,19 +968,22 @@ static void handle_session(ssh_event event, ssh_session session) {
     // START SSH CONNECTION
     logwarning("SSH Connection Received...");
 
-    if (debugmode == true) {
-        logcritical("SSH Starting in DEBUGGING MODE!!!");
-        logcritical("THIS SHOULD NOT BE FOR PRODUCTION!");
-    } else {
-        loginfo("Using WASTE authentication");
+    if (writefromsshstring("newconnectionreceived", "") != 0) {
+        logcritical("UNABLE TO UPDATE MAIN VARIABLES!");
+        logcritical("Killing...");
+        return;
+        return;
     }
 
-    // MAIN AUTHENTICATION LOOP
-    while (sdata.authenticated == 0 || sdata.channel == NULL) {
+    if (debugmode == true) {
+        logwarning("SSH Starting in DEBUGGING MODE!!!");
+        logwarning("THIS SHOULD NOT BE FOR PRODUCTION!");
+
+        // MAIN AUTHENTICATION LOOP
+        while (sdata.authenticated == 0 || sdata.channel == NULL) {
         /* If the user has used up all attempts, or if he hasn't been able to
          * authenticate in 100 seconds (n * 100ms), disconnect. */
 
-        if (debugmode == true) {
             if (sdata.auth_attempts >= 3 || n >= 100) {
                 return;
             }
@@ -870,18 +992,42 @@ static void handle_session(ssh_event event, ssh_session session) {
                 fprintf(stderr, "%s\n", ssh_get_error(session));
                 return;
             }
-        } else {
-            if (sdata.auth_attempts >= 98 || n >= 1000) {
-                return;
-            }
-
-            if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
-                fprintf(stderr, "%s\n", ssh_get_error(session));
-                return;
-            }
+            
+            n++;
         }
-        n++;
+    } else {
+        loginfo("Using WASTE authentication");
+
+        // MAIN AUTHENTICATION LOOP
+        while (sdata.authenticated == 0 || sdata.channel == NULL) {
+            /* If the user has used up all attempts, or if he hasn't been able to
+            * authenticate in 100 seconds (n * 100ms), disconnect. */
+
+            if (debugmode == true) {
+                if (sdata.auth_attempts >= 98 || n >= 1000) {
+                    return;
+                }
+
+                if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
+                    fprintf(stderr, "%s\n", ssh_get_error(session));
+                    return;
+                }
+
+            } else {
+                if (sdata.auth_attempts >= 98 || n >= 1000) {
+                    return;
+                }
+
+                if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
+                    fprintf(stderr, "%s\n", ssh_get_error(session));
+                    return;
+                }
+            }
+            n++;
+        }
     }
+
+    
 
     // AUTHENTICATE UP
     // RUN SESSION BELOW?
@@ -1115,11 +1261,336 @@ int handleSSHConnections (int argc, char **argv) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+void thread1(std::promise<void>&& promise) {
+    std::unique_lock<std::mutex> lock(mtx);
+    while (!ready) {
+        cv.wait(lock);
+    }
+    std::cout << "Thread 1 received data: " << shared_data << sshterminals[0] << std::endl;
+
+    shared_data++;
+    ready = false;
+    cv.notify_all();
+    // Signal that thread1 has finished its work
+    promise.set_value();
+}
+
+void thread2(std::promise<void>&& promise) {
+    std::unique_lock<std::mutex> lock(mtx);
+    shared_data = 42;
+    sshterminals[0] = "TESTING123";
+    ready = true;
+    std::cout << "Thread 2 sent data: " << shared_data << sshterminals[0] << std::endl;
+    cv.notify_all();
+    while (ready) {
+        cv.wait(lock);
+    }
+    std::cout << "Thread 2 received updated data: " << shared_data << std::endl;
+    // Signal that thread2 has finished its work
+    promise.set_value();
+}
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// PLEASE WORK
+
+
+void mainrunningloop() {
+        startupchecks = startupchecks + system("rm honeypi");
+    startupchecks = startupchecks + system("rm randomize");
+
+
+    loginfo("SSH Guest has started successfully...");
+
+
+    
+    // MAIN THREAD CONSTANT LOOP
+    while(true) {
+
+        sleep(2);
+        send(sock, heartbeat.c_str(), heartbeat.size(), 0);
+
+
+        if (attacked == true) {
+            
+
+            // IF DATA WAITING, ANALYZE THE DATA
+            if (datawaiting() == 1) {
+
+                loginfo("ANALYZING DATA");
+
+                // ANALYZE DATA RECEIVED
+                bool completiongh = false;
+                int learned = 0;
+                while(learned <= 255 && completiongh == false) {
+                    std::string datareceived = readtomainstring(learned);
+
+                    if (datareceived == "") {
+                        loginfo("Analyzed all available data, clearing array");
+                        logvariableset = false;
+                        clearsshterminals();
+                        completiongh = true;
+                    } else {
+
+                        // OTHER COMMANDS HERE
+                        if (datareceived == "newconnectionreceived") {
+                            attacked = true;
+                            std::string attacksend = "attacked";
+                            send(sock, attacksend.c_str(), attacksend.size(), 0);
+                        } else {
+
+                            // TO DECLARE VARIABLES
+                            std::string subsystempart = datareceived.substr(0, 2);
+                            std::string restofmessage = datareceived.substr(4, datareceived.size() - 4);
+
+                            bool validmessage = false;
+
+                            // USERNAME
+                            if (subsystempart == "US") {
+                                char* rainbows = "USE: ";
+                                strcat(rainbows, restofmessage.c_str());
+
+                                send(sock, rainbows, strlen(rainbows), 0);
+                                validmessage = true;
+                            }
+
+                            // IP ADDRESS
+                            if (subsystempart == "IP") {
+
+                            }
+
+                            // PASSWORDS
+                            if (subsystempart == "PW") {
+
+                            }
+
+                            // COMMANDS RAN
+                            if (subsystempart == "CM") {
+
+                            }
+
+                            // PUBLIC KEYS
+                            if (subsystempart == "PK") {
+
+                            }
+
+                            // PRIVATE KEYS
+                            if (subsystempart == "PI") {
+
+                            }
+
+                            // FILES ACCESSED
+                            if (subsystempart == "FA") {
+
+                            }
+                            
+                            // FILE CHANGES
+                            if (subsystempart == "FC") {
+
+                            }
+
+
+
+
+                            // IF VALID MESSAGE EQUALS FALSE!
+                            if (validmessage == false) {
+                                logcritical("INVALID MESSAGE RECEIVED!");
+                                std::string invalidmessage = "invalid";
+                                send(sock, invalidmessage.c_str(), invalidmessage.size(), 0);
+                            }
+
+                        }
+                    }
+
+
+                    learned = learned + 1;
+                }
+
+            } else {
+                sleep(0.25);
+            }
+        } else {
+        
+            if (datawaiting() == 1) {
+
+
+                // ANALYZE DATA RECEIVED
+                loginfo("ANALYZING");
+                bool completiongh = false;
+                int learned = 0;
+                while(learned <= 255 && completiongh == false) {
+                    std::string datareceived = readtomainstring(learned);
+                    logwarning(datareceived);
+
+                    if (datareceived == "") {
+                        loginfo("Analyzed all available data, clearing array");
+                        logvariableset = false;
+                        clearsshterminals();
+                        completiongh = true;
+                    } else {
+
+                        // OTHER COMMANDS HERE
+                        if (datareceived == "newconnectionreceived") {
+                            attacked = true;
+                            logcritical("RECEIVED ATTACK FROM SSH, LOGGING INFORMATION");
+                            std::string attacksend = "attacked";
+                            send(sock, attacksend.c_str(), attacksend.size(), 0);
+                        } else {
+
+                            // TO DECLARE VARIABLES
+                            std::string subsystempart = datareceived.substr(0, 2);
+                            std::string restofmessage = datareceived.substr(4, datareceived.size() - 4);
+
+                            bool validmessage = false;
+
+                            // USERNAME
+                            if (subsystempart == "US") {
+                                char* rainbows = "USE: ";
+                                strcat(rainbows, restofmessage.c_str());
+
+                                send(sock, rainbows, strlen(rainbows), 0);
+                                validmessage = true;
+                            }
+
+                            // IP ADDRESS
+                            if (subsystempart == "IP") {
+
+                            }
+
+                            // PASSWORDS
+                            if (subsystempart == "PW") {
+
+                            }
+
+                            // COMMANDS RAN
+                            if (subsystempart == "CM") {
+
+                            }
+
+                            // PUBLIC KEYS
+                            if (subsystempart == "PK") {
+
+                            }
+
+                            // PRIVATE KEYS
+                            if (subsystempart == "PI") {
+
+                            }
+
+                            // FILES ACCESSED
+                            if (subsystempart == "FA") {
+
+                            }
+                            
+                            // FILE CHANGES
+                            if (subsystempart == "FC") {
+
+                            }
+
+
+
+
+                            // IF VALID MESSAGE EQUALS FALSE!
+                            if (validmessage == false) {
+                                logcritical("INVALID MESSAGE RECEIVED!");
+                                std::string invalidmessage = "invalid";
+                                send(sock, invalidmessage.c_str(), invalidmessage.size(), 0);
+                            }
+
+                        }
+                    }
+
+
+                    learned = learned + 1;
+                }
+
+
+
+
+                sleep(0.25);
+            } else {
+                sleep(8);
+                loginfo("heartbeatSSH");
+            }
+        }
+
+    }    
+
+}
+
+
+
+
+
+
+
 ///////////////////////////
 //// MAIN SETUP SCRIPT ////
 ///////////////////////////
 void setup(int argc, char **argv) {
     loginfo("finishing SSH Guest V1 startup...");
+
+    ready = true;
+    cv.notify_all();
+
+/*
+    loginfo("RUNNINGTEST");
+    std::promise<void> promise1;
+    std::future<void> future1 = promise1.get_future();
+
+    std::promise<void> promise2;
+    std::future<void> future2 = promise2.get_future();
+
+    std::thread t1(thread1, std::move(promise1));
+    std::thread t2(thread2, std::move(promise2));
+
+    t1.detach();
+    t2.detach();
+
+    // Wait for the threads to complete their work
+    future1.wait();
+    future2.wait();
+
+    loginfo("FINISHED TEST");
+    */
 
     //////////////////////////////////////////////////////
     // START CLIENT CONNECTION TO MAIN HONEYPI ON 63599 //
@@ -1191,17 +1662,23 @@ void setup(int argc, char **argv) {
     // SERVER PORT LISTEN THREAD(22)
     sendtologopen("[INFO] - Creating server thread on port 22 listen...");
 
-    
+    std::atomic<bool> logvariableset;
+ //   std::mutex mtx;
 
     sleep(2);
     std::thread acceptingClientsThread2(handleSSHConnections, argc, argv);
     acceptingClientsThread2.detach();
     sleep(1);
 
+    std::thread mainRunningLoop(mainrunningloop);
+    mainRunningLoop.detach();
 
-
+    ready = true;
+    cv.notify_all();
 
 }
+
+
 
 
 
@@ -1214,42 +1691,8 @@ int main(int argc, char **argv) {
 
     setup(argc, argv);
 
-    startupchecks = startupchecks + system("rm honeypi");
-    startupchecks = startupchecks + system("rm randomize");
-
-
-    loginfo("SSH Guest has started successfully...");
-
-    
-    // MAIN THREAD CONSTANT LOOP
     while(true) {
-        if (runtomain == true && mainhost == true) {
-            send(sock, heartbeat.c_str(), heartbeat.size(), 0);
-        }
+        sleep(100);
+    }
 
-        if (attacked == true) {
-            
-
-            if (datawaiting() == 1) {
-
-            } else {
-                sleep(0.25);
-            }
-        }
-        
-
-        if (datawaiting() == 1) {
-
-
-
-            // ANALYZE MORE HERE
-
-
-
-            sleep(1)
-        } else {
-            sleep(8);
-            loginfo("heartbeatSSH");
-        }
-    }    
 }
