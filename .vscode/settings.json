@@ -58,7 +58,19 @@
         "iomanip": "cpp",
         "optional": "cpp",
         "sstream": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "mutex": "cpp",
+        "algorithm": "cpp",
+        "condition_variable": "cpp",
+        "coroutine": "cpp",
+        "list": "cpp",
+        "resumable": "cpp",
+        "unordered_map": "cpp",
+        "functional": "cpp",
+        "future": "cpp",
+        "xhash": "cpp",
+        "csignal": "cpp"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "enabled",
+//    "C_Cpp.errorSquiggles": "disabled"
 }
