@@ -31,7 +31,9 @@ WORKDIR /usr/src/honeypi
 RUN g++ -o honeypi start.cpp
 RUN g++ -o randomize randomize.cpp
 RUN g++ -o run running.cpp -lssh
-RUN g++ -o ssh mainsshserverthreads.cpp -lssh
+
+RUN g++ -o debug debug.cpp -lssh
+# RUN g++ -o ssh mainsshserverthreads.cpp -lssh      # NOT REQUIRED FOR BUILDING ANYMORE
 
 # Expose the SSH port
 EXPOSE 22
