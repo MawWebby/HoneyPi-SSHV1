@@ -1733,26 +1733,22 @@ void setup(int argc, char **argv) {
     ready = true;
     cv.notify_all();
 
-/*
-    loginfo("RUNNINGTEST");
-    std::promise<void> promise1;
-    std::future<void> future1 = promise1.get_future();
+    std::fstream rsakeys;
+    rsakeys.open("/etc/ssh/ssh_host_rsa_key");
+    if (rsakeys.is_open() == true) {
+        rsakeys.close();
+        loginfo("SSH RSA Keys Found!");        
+    } else {
+        loginfo("SSH RSA Keys Not Found!");
+        loginfo("Generating New Keys");
+        int generatekeys = system("ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' > nul: && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' > nul: && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' > nul: ");
+        loginfo("Done Generating SSH Keys");
+    }
 
-    std::promise<void> promise2;
-    std::future<void> future2 = promise2.get_future();
+    loginfo("Removing Unneeded Dependencies!");
+    int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
 
-    std::thread t1(thread1, std::move(promise1));
-    std::thread t2(thread2, std::move(promise2));
 
-    t1.detach();
-    t2.detach();
-
-    // Wait for the threads to complete their work
-    future1.wait();
-    future2.wait();
-
-    loginfo("FINISHED TEST");
-    */
 
     //////////////////////////////////////////////////////
     // START CLIENT CONNECTION TO MAIN HONEYPI ON 63599 //

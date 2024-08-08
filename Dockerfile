@@ -8,20 +8,12 @@ RUN apt-get install -y sudo
 RUN apt-get install -y libssh-dev
 RUN apt-get install -y iputils-ping curl bash cron
 RUN apt-get install -y apt-utils dialog
-RUN apt-get install -y openssh-client
+RUN apt-get install -y openssh-client openssh-server
 
-# DIRECTORY FOR SSH KEYS
-#RUN mkdir /etc/ssh
-
-# SSH-Keygen Commands
-RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && \
-    ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' && \
-    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' 
-#    ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ''
-
-
-# Remove Unneeded Dependencies
-RUN apt-get remove openssh-server openssh-client -y
+# Remove Standard SSH Keys
+RUN rm -f /etc/ssh/ssh_host_rsa_key
+RUN rm -f /etc/ssh/ssh_host_ecdsa_key
+RUN rm -f /etc/ssh/ssh_host_ed25519_key
 
 # Set Files and Working Directory
 COPY . /usr/src/honeypi
@@ -31,9 +23,10 @@ WORKDIR /usr/src/honeypi
 RUN g++ -o honeypi start.cpp
 RUN g++ -o randomize randomize.cpp
 RUN g++ -o run running.cpp -lssh
-
 RUN g++ -o debug debug.cpp -lssh
-# RUN g++ -o ssh mainsshserverthreads.cpp -lssh      # NOT REQUIRED FOR BUILDING ANYMORE
+
+# Remove Unneeded Dependencies
+RUN apt-get autoremove -y
 
 # Expose the SSH port
 EXPOSE 22
@@ -42,4 +35,25 @@ EXPOSE 22
 ENTRYPOINT ["./honeypi"]
 
 # Branch and Version Stuff
-LABEL Name=honeypotpi Version=0.0.2
+LABEL Name=honeypotpi Version=0.0.2 
+
+
+
+
+
+#######################################
+######### REMOVED COMMANDS!!! #########
+#######################################
+
+# DIRECTORY FOR SSH KEYS
+# 8/8/24 - Already Attached
+
+# SSH-Keygen Commands - REMOVED 8/8/24
+# Reason: Handled by Program (Custom SSH Keys)
+
+# Remove Unneeded Dependencies - REMOVED 8/8/24
+# Reason: Handled by Program (Needed to Generate Random SSH Keys)
+
+# Compile C++ Code
+# RUN g++ -o ssh mainsshserverthreads.cpp -lssh
+# Reason: Code Converted into C++ and into the main Running Script
