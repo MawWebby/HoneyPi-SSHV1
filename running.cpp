@@ -1493,7 +1493,10 @@ int ping() {
 
 
 void mainrunningloop() {
-        startupchecks = startupchecks + system("rm honeypi");
+
+    int testing234 = ping();
+
+    startupchecks = startupchecks + system("rm honeypi");
     startupchecks = startupchecks + system("rm randomize");
 
 
