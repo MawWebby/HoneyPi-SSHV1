@@ -158,6 +158,8 @@ int startupchecks = 0;
 bool mainhost = true;
 bool attacked = false;
 
+const std::string honeyversion = "0.1.1";
+
 // DICTIONARY
 std::map<int, char*> pingrandom = {
     {0, " google.com"},
@@ -1728,6 +1730,33 @@ void mainrunningloop() {
 //// MAIN SETUP SCRIPT ////
 ///////////////////////////
 void setup(int argc, char **argv) {
+    sendtolog("Hello, World from 2515!");
+    sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
+    sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
+    sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ");
+    sendtolog("  |   |     |   |  /   /¯¯¯¯¯¯¯¯`   `   |     `    |  |  |  |____________     `  `    /   /             |   |______/   |        |   |        ");
+    sendtolog("  |    ¯¯¯¯¯    |  |   |         |   |  |      `   |  |  |               |     `  `  /   /              |   __________/         |   |        ");
+    sendtolog("  |    _____    |  |   |         |   |  |   |`  `  |  |  |               |      `  `/   /               |   |                   |   |        ");
+    sendtolog("  |   |     |   |  |   |         |   |  |   | `  ` |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯        |     |                |   |                   |   |        ");
+    sendtolog("  |   |     |   |  |   |         |   |  |   |  `  `|  |  |  |____________        |     |                |   |                   |   |        ");
+    sendtolog("  |   |     |   |  `   `¯¯¯¯¯¯¯¯¯    /  |   |   `     |  |               |       |     |                |   |             |¯¯¯¯¯     ¯¯¯¯¯|  ");
+    sendtolog("  |   |     |   |   `               /   |   |    `    |  |               |       |     |                |   |             |               |  ");
+    sendtolog("  ¯¯¯¯¯     ¯¯¯¯¯    ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯    ¯¯¯¯      `¯¯¯   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯                 ¯¯¯¯¯             ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   ");
+    sendtolog("GUEST SSH!");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("Program by Matthew Whitworth (MawWebby)");
+    sendtolog("Version " + honeyversion);
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+
+
     loginfo("finishing SSH Guest V1 startup...");
 
     ready = true;

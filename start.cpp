@@ -15,7 +15,7 @@
 using namespace std;
 
 
-const bool skiprandom = false;
+const bool skiprandom = true;
 const bool debug = false;
 
 
@@ -24,7 +24,6 @@ const bool debug = false;
 /////////////////
 
 // CONSTANT VARIABLES
-const string honeyversion = "0.0.2";
 const int heartbeattime = 10;
 
 // SYSTEM VARIABLES
@@ -168,10 +167,6 @@ int createreport() {
 // THE MAIN SETUP SCRIPTS //
 //////////////////////////// 
 int setup() {
-    sendtolog("Hello, World");
-    sendtolog("HoneyPi - GUEST SSH Docker");
-    sendtolog("Program by Matthew Whitworth (MawWebby)");
-    sendtolog("Version " + honeyversion);
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
