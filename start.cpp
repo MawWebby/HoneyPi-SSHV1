@@ -15,7 +15,8 @@
 using namespace std;
 
 
-const bool skiprandom = true;
+const bool skiprandom = false;
+const bool debug = false;
 
 
 /////////////////
@@ -34,6 +35,7 @@ bool attacked = false;
 bool systemup = false;
 int heartbeat = 0;
 string erroroccurred = "";
+bool calculatingtime = false;
 
 // REPORT VARIABLES
 bool generatingreport = false;
@@ -47,6 +49,77 @@ string fileactions[101] = {};
 
 
 const char* randomize = "./randomize";
+
+
+// TIME VARIABLES
+long long int startuptime = 0;
+long long int currenttime = 0;
+long long int timesincestartup = 0;
+int currenthour = 0;
+int currentminute = 0;
+int currentsecond = 0;
+int currentdayofyear = 0;
+int currentdays = 0;
+int currentyear = 0;
+int currentmonth = 0;
+int secondsperyear = 31536000;
+int daysperyear = 365.25;
+int secondsperday = 86400;
+int secondsperhour = 3600;
+int secondsperminute = 60;
+int minutesperhour = 60;
+int hoursperday = 24;
+
+
+
+
+
+int timedetector() {
+    if (calculatingtime == true) {
+        std::cout << "[WARNING] - Call to Time Calculation Called While Already Processing!" << std::endl;
+        return 1;
+
+    }  else {
+        // TIME
+        currenttime = time(NULL);
+
+        // CURRENT SECONDS
+        timesincestartup = currenttime - startuptime;
+        currentsecond = currenttime % secondsperminute;
+
+        // CURRENT MINUTES
+        currentminute = currenttime - currentsecond;
+        currentminute = currentminute % 3600;
+        currentminute = currentminute / 60;
+
+        // CURRENT HOURS
+        currenthour = currenttime - ((currentminute * 60) + currentsecond);
+        currenthour = currenthour % hoursperday;
+        
+        // CURRENT DAYS
+        currentdays = currenttime - ((currenthour * 3600) + (currentminute * 60) + currentsecond);
+        currentdays = currentdays / 86400;
+
+        // CURRENT YEARS
+        currentyear = 1970 + (currentdays / 365.25);
+
+        // DEBUG PRINT VALUES TO CONSOLE
+        if (debug == true) {
+            std::cout << currentsecond << std::endl;
+            std::cout << currentminute << std::endl;
+            std::cout << currenthour << std::endl;
+            std::cout << currentdays << std::endl;
+            std::cout << currentyear << std::endl;
+        }
+
+        return 0;
+    }
+
+    return 1;
+}
+
+
+
 
 ////////////////////////////
 // Send to Logger Scripts //
@@ -96,15 +169,19 @@ int createreport() {
 //////////////////////////// 
 int setup() {
     sendtolog("Hello, World");
-    sendtolog("HoneyPi - GUEST Docker");
+    sendtolog("HoneyPi - GUEST SSH Docker");
     sendtolog("Program by Matthew Whitworth (MawWebby)");
     sendtolog("Version " + honeyversion);
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
     sleep(5);
-
-    int testing = system("./debug");
+    if (debug == true) {
+        int testing = system("./debug");
+    } else {
+        int testing = system("rm debug");
+    }
+    
 
 
     // CHECK FOR SYSTEM UPDATES
