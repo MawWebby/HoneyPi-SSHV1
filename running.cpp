@@ -16,6 +16,7 @@
 #include <atomic>
 #include <cstring>
 #include <chrono>
+#include <map>
 
 
 
@@ -157,9 +158,73 @@ int startupchecks = 0;
 bool mainhost = true;
 bool attacked = false;
 
+// DICTIONARY
+std::map<int, char*> pingrandom = {
+    {0, " google.com"},
+    {1, " yahoo.com" },
+    {2, " youtube.com" },
+    {3, " gmail.com" },
+    {4, " stackoverflow.com" },
+    {5, " w3schools.com" },
+    {6, " facebook.com" },
+    {7, " instagram.com" },
+    {8, " whatsapp.com" },
+    {9, " x.com" },
+    {10, " wikipedia.org"},
+    {11, " yahoo.com" },
+    {12, " reddit.com" },
+    {13, " amazon.com" },
+    {14, " baidu.com" },
+    {15, " chatgpt.com" },
+    {16, " chatgpt.com" },
+    {17, " netflix.com" },
+    {18, " netflix.com" },
+    {19, " linkedin.com" },
+    {20, " linkedin.com"},
+    {21, " live.com" },
+    {22, " live.com" },
+    {23, " office.com" },
+    {24, " office.com" },
+    {25, " pinterest.com" },
+    {26, " pinterest.com" },
+    {27, " bing.com" },
+    {28, " bing.com" },
+    {29, " microsoftonline.com" },
+    {30, " discord.com"},
+    {31, " microsoft.com" },
+    {32, " twitch.tv" },
+    {33, " twitch.tv" },
+    {34, " microsoft.com" },
+    {35, " weather.com" },
+    {36, " weather.com" },
+    {37, " t.me" },
+    {38, " roblox.com " },
+    {39, " roblox.com" },
+    {40, " duckduckgo.com"},
+    {41, " quora.com" },
+    {42, " sharepoint.com" },
+    {43, " ebay.com" },
+    {44, " w3schools.com" },
+    {45, " facebook.com" },
+    {46, " instagram.com" },
+    {47, " whatsapp.com" },
+    {48, " pinterest.com" },
+    {49, " pinterest.com" },
+    {50, " stackoverflow.com"},
+    {51, " wikipedia.org" },
+    {52, " live.com" },
+    {53, " microsoft.com" },
+    {54, " youtube.com" },
+    {55, " youtube.com" },
+    {56, " google.com" },
+    {57, " google.com" },
+    {58, " google.com" },
+    {59, " google.com" }
+};
+
 
 // COMMUNICATION VARIABLES
-volatile bool logvariableset = false;
+bool logvariableset = false;
 std::string sshterminals[255] = {};
 //std::vector<std::string> sshterminals(255, "");
 
@@ -1326,7 +1391,29 @@ void thread2(std::promise<void>&& promise) {
 
 
 
-
+int ping() {
+    int testnumber = 0;
+    testnumber = int((rand() % 60));
+    int result;
+    char buffer51[512];
+    const char* starter3 = "ping -c 5 ";
+    const char* ender3 = " > nul: ";
+    strcpy(buffer51, starter3);
+    char* pingtest = "";
+    pingtest = pingrandom[testnumber];
+    strcat(buffer51, pingtest);
+    strcat(buffer51, ender3);
+    result = system(buffer51);
+    if (result != 0) {
+        logwarning("UNABLE TO PING WEBSITE!");
+    } else {
+        if (debug == true) {
+            loginfo("FINISHED PING");
+        }
+    }
+    
+    return result;
+}
 
 
 
