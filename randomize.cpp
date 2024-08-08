@@ -26,8 +26,8 @@ std::map<int, char*> packagedictionary = {
     {3, " make "},
     {4, " nodejs "},
     {5, " libreoffice "},
-    {6, " firefox "},
-    {7, " chromium-browser "},
+    {6, " firefox-esr "},
+    {7, " chromium "},
     {8, " docker.io "},
     {9, " vim "},
     {10, " git "},
@@ -35,11 +35,11 @@ std::map<int, char*> packagedictionary = {
     {12, " apache2 "},
     {13, " curl "},
     {14, " bash "},
-    {15, " kubernetes "},
-    {16, " mysql-server "},
-    {17, " mysql-client "},
+    {15, " nginx "},
+    {16, " mariadb-server "},
+    {17, " mariadb-client "},
     {18, " xwayland "},
-    {19, " xserver "},
+    {19, " xserver-xorg-core "},
     {20, " xz-utils "},
     {21, " pip "},
     {22, " synaptic "},
@@ -47,7 +47,7 @@ std::map<int, char*> packagedictionary = {
     {24, " filezilla "},
     {25, " gedit "},
     {26, " remmina "},
-    {27, " steam "},
+    {27, " apache2 "},
     {28, " flameshot "},
     {29, " calibre "},
     {30, " vim-gtk3 "},
@@ -58,14 +58,14 @@ std::map<int, char*> packagedictionary = {
     {35, " thunderbird "},
     {36, " geary "},
     {37, " evolution "},
-    {38, " steam "},
-    {39, " lutris "},
+    {38, " apache2 "},
+    {39, " apache2 "},
     {40, " nginx "},
     {41, " snap "},
     {42, " cinnamon "},
-    {43, " ubuntu-mate-desktop "},
+    {43, " nginx "},
     {44, " xfce4 "},
-    {45, " gnome-tweak-tool "},
+    {45, " nginx "},
     {46, " gnome-terminal "},
     {47, " konsole "},
     {48, " terminator "},
@@ -73,23 +73,23 @@ std::map<int, char*> packagedictionary = {
     {50, " audacity "},
     {51, " blender "},
     {52, " gimp "},
-    {53, " openshot "},
+    {53, " apache2 "},
     {54, " kdenlive"},
     {55, " rhythmbox"},
     {56, " lollypop "},
-    {57, " amarok "},
+    {57, " nginx "},
     {58, " sublime-text "},
     {59, " geany "},
     {60, " vlc "},
     {61, " vlc "},
     {62, " kodi "},
-    {63, " virtualbox "},
-    {64, " firefox "},
-    {65, ""},
-    {66, ""},
-    {67, ""},
-    {68, ""},
-    {69, ""},
+    {63, " nginx "},
+    {64, " firefox-esr "},
+    {65, " apache2 "},
+    {66, " apache2 "},
+    {67, " nginx "},
+    {68, " apache2 "},
+    {69, " apache2 "},
 };
 
 
@@ -118,22 +118,12 @@ int main() {
     int process = system("echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections");
 
     int i = 0;
-
-    while (i <= 64) {
-        rainbow = packagedictionary[i];
-        strcat(buffer4, rainbow);
-        i = i + 1;
-    }
-
-    /*
+    
     while (i <= 6) {
         i = i + 1;
-
         rainbow = packagedictionary[int(rand() % 65)];
         strcat(buffer4, rainbow);
-
     }
-    */
 
     strcat(buffer4, endstring);
     loginfo("installing packages");
