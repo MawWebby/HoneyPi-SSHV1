@@ -1,0 +1,19 @@
+HoneyPi-SSH Release Notes:
+
+
+
+Release 0.1
+ - Update SSH Structure to Avoid Potential Problems with Multithreading
+      - SSH thread can send networked packets to local destination
+      - Main thread no longer interacts with shared libraries issues and now works better
+      - Setup loop added new HONEYPI display.
+      - NetworkD no longer optional but now required to send packets correctly through SSH
+ - Add New Log and fd for serial
+      - Now processing stdssh will send over SSH instead of stdout/stderr for Docker/Main logs potential leak.
+ - PROGRESS TO FINISHED VERSION - 66%
+
+Release 0.0.2
+ - Hello World
+
+Release 0.0.1
+ - First Version
