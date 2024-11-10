@@ -1,40 +1,40 @@
 //////////////////
 // Dependencies //
 //////////////////
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <fstream>
-#include <thread>
-#include <ctime>
-#include <netdb.h>
-#include <iostream>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <atomic>
-#include <cstring>
+#include <arpa/inet.h>
+#include <ctime>
 #include <chrono>
-#include <map>
-
-
-
-// TEST CODE
+#include <cstring>
+#include <fcntl.h>
+#include <fstream>
 #include <iostream>
+#include <libssh/callbacks.h>
+#include <libssh/server.h>
+#include <map>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <pty.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string>
+#include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <stdio.h>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <future>
-std::mutex mtx;
-std::condition_variable cv;
-bool ready = false;
-int shared_data = 0;
-
-
-
-
-
+#include <unistd.h>
+#include <utmp.h>
+#define KEYS_FOLDER "/etc/ssh/"
+#define USER "myuser"
+#define PASS "l"
+#define BUF_SIZE 1048576
+#define SESSION_END (SSH_CLOSED | SSH_CLOSED_ERROR)
+#define SFTP_SERVER_PATH "/usr/lib/sftp-server"
+#define DEF_STR_SIZE 1024
+#undef ssh_channel_callbacks_struct
 
 
 
@@ -43,6 +43,7 @@ int shared_data = 0;
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
+const std::string honeyversion = "0.1.1";
 
 
 
@@ -52,55 +53,7 @@ const bool debugmode = false;
 //// DEPENDENCIES / DEFINITIONS ////
 ////////////////////////////////////
 ////////////////////////////////////
-#include <pty.h>
-#include <utmp.h>
-#include <string>
-#include <unistd.h>
-#include <iostream>
 
-#include <libssh/callbacks.h>
-#include <libssh/server.h>
-
-#include <poll.h>
-#ifdef HAVE_ARGP_H
-#include <argp.h>
-#endif
-#include <fcntl.h>
-#ifdef HAVE_LIBUTIL_H
-#include <libutil.h>
-#endif
-#ifdef HAVE_PTY_H
-#include <pty.h>
-#endif
-#include <signal.h>
-#include <stdlib.h>
-#ifdef HAVE_UTMP_H
-#include <utmp.h>
-#endif
-#ifdef HAVE_UTIL_H
-#include <util.h>
-#endif
-#include <sys/ioctl.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <stdio.h>
-
-#ifndef KEYS_FOLDER
-#ifdef _WIN32
-#define KEYS_FOLDER
-#else
-#define KEYS_FOLDER "/etc/ssh/"
-#endif
-#endif
-
-#define USER "myuser"
-#define PASS "l"
-#define BUF_SIZE 1048576
-#define SESSION_END (SSH_CLOSED | SSH_CLOSED_ERROR)
-#define SFTP_SERVER_PATH "/usr/lib/sftp-server"
-#define DEF_STR_SIZE 1024
-
-#undef ssh_channel_callbacks_struct
 /*
 #define ssh_channel_callbacks_struct {
     .userdata = 0,
@@ -153,12 +106,11 @@ const bool debug = true;
 const bool runtomain = true;
 
 // SYSTEM VARIABLES
-int encounterederrors = 0;
+std::atomic<int> encounterederrors(0);
+std::atomic<int> mainhost(0);
+std::atomic<int> attacked(0);
 int startupchecks = 0;
-bool mainhost = true;
-bool attacked = false;
 
-const std::string honeyversion = "0.1.1";
 
 // DICTIONARY
 std::map<int, char*> pingrandom = {
@@ -327,22 +279,49 @@ int timedetector() {
 void sendtolog(std::string data2) {
     std::cout << data2 << std::endl;
 }
+
 void sendtologopen(std::string data2) {
     std::cout << data2;
 }
-void sendtologclosed(std::string data2) {
-    std::cout << data2 << std::endl;
+
+void logdebug(std::string data2, bool complete) {
+    data2 = "[DEBUG] - " + data2;
+    if (complete == false) {
+        sendtologopen(data2);
+    } else {
+        sendtolog(data2);
+    }
 }
-void loginfo(std::string data2) {
+
+void loginfo(std::string data2, bool complete) {
     data2 = "[INFO] - " + data2;
-    sendtolog(data2);
+    if (complete == false) {
+        sendtologopen(data2);
+    } else {
+        sendtolog(data2);
+    }
 }
-void logwarning(std::string data2) {
+
+void logwarning(std::string data2, bool complete) {
     data2 = "[WARNING] - " + data2;
-    sendtolog(data2);
+    if (complete == false) {
+        sendtologopen(data2);
+    } else {
+        sendtolog(data2);
+    }
 }
-void logcritical(std::string data2) {
+
+void logcritical(std::string data2, bool complete) {
     data2 = "[CRITICAL] - " + data2;
+    if (complete == false) {
+        sendtologopen(data2);
+    } else {
+        sendtolog(data2);
+    }
+}
+
+void logerror(std::string headerdata2, std::string errormessage) {
+    std::string data2 = "[ERROR] - " + headerdata2 + " - " + errormessage;
     sendtolog(data2);
 }
 
@@ -354,26 +333,19 @@ void logcritical(std::string data2) {
 ////////////////////////////////////
 ////////////////////////////////////
 int datawaiting() {
-    logcritical(sshterminals[0]);
-    std::unique_lock<std::mutex> lock(mtx);
-    while (!ready) {
-        cv.wait(lock);
-        logwarning("Unable to secure SSH Lock!");
-        sleep(1);
-    }
-    logcritical(sshterminals[0]);
+    logcritical(sshterminals[0], true);
     if (logvariableset == true) {
-        loginfo("VARIABLE SET");
-        cv.notify_all();
+        loginfo("VARIABLE SET", true);
+        attacked.store(1);
         return 1;
     } else {
         if (sshterminals[0] != "") {
-            loginfo("VARIABLE SET");
-            cv.notify_all();
+            loginfo("VARIABLE SET", true);
+            attacked.store(1);
             return 1;
         } else {
-            loginfo("VARIABLE NOT SET");
-            cv.notify_all();
+            loginfo("VARIABLE NOT SET", true);
+            attacked.store(0);
             return 0;
         }
     }
@@ -388,14 +360,6 @@ int datawaiting() {
 ////////////////////////////////////
 ////////////////////////////////////
 std::string readtomainstring(int numbertoread) {
-    std::unique_lock<std::mutex> lock(mtx);
-    while (!ready) {
-        cv.wait(lock);
-        logwarning("Unable to secure SSH Lock!");
-        sleep(1);
-    }
-    ready = true;
-    cv.notify_all();
     return sshterminals[numbertoread];
 }
 
@@ -407,43 +371,28 @@ std::string readtomainstring(int numbertoread) {
 //////////////////////////////////////
 //////////////////////////////////////
 int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
-    std::unique_lock<std::mutex> lock(mtx);
-    loginfo("true");
-    while (!ready) {
-        logwarning("Unable to secure SSH Lock!");
-        cv.wait(lock);
-        
-    }
-
-    ready = false;
-    cv.notify_all();
-
-    loginfo("not true");
     bool completion22 = false;
     int testers = 0;
 
     if (stringtoinsert == "" && chartoinsert == "") {
-        logcritical("RECEIVED EMPTY INPUT STRING, NOT CONTINUING!");
-        cv.notify_all();
+        logcritical("RECEIVED EMPTY INPUT STRING, NOT CONTINUING!", true);
         return 1;
     } else {
 
         // HELPER TO CONVERT CHAR TO STRING
         if (chartoinsert != "") {
             stringtoinsert = chartoinsert;
-            loginfo(stringtoinsert);
+            loginfo(stringtoinsert, true);
         }
 
-        loginfo(stringtoinsert);
+        loginfo(stringtoinsert, true);
 
         while(completion22 == false) {
             if (testers == 254) {
-                logcritical("LOG OVERFLOW ERROR!");
-                logcritical("MARKING AS ERROR AND ENDING SESSION!");
+                logcritical("LOG OVERFLOW ERROR!", true);
+                logcritical("MARKING AS ERROR AND ENDING SESSION!", true);
                 completion22 = true;
                 logvariableset = true;
-                ready = true;
-                cv.notify_all();
                 return 1;
             }
 
@@ -451,11 +400,8 @@ int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
                 sshterminals[testers] = stringtoinsert;
                 completion22 = true;
                 logvariableset = true;
-                loginfo("Logged message");
-                logwarning(sshterminals[testers]);
-                logcritical(std::__cxx11::to_string(testers));
-                ready = true;
-                cv.notify_all();
+                loginfo("Logged message", true);
+                logwarning(sshterminals[testers], true);
                 return 0;
             } else {
                 testers = testers + 1;
@@ -472,12 +418,6 @@ int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
 //////////////////////////////////////
 //////////////////////////////////////
 int clearsshterminals() {
-    std::unique_lock<std::mutex> lock(mtx);
-    while (!ready) {
-        cv.wait(lock);
-        logwarning("Unable to secure SSH Lock!");
-        sleep(1);
-    }
     logvariableset = false;
 
     int goats = 0;
@@ -487,10 +427,8 @@ int clearsshterminals() {
     }
 
     if (sshterminals[2] != "") {
-        cv.notify_all();
         return 1;
     } else {
-        cv.notify_all();
         return 0;
     }
 }
@@ -598,11 +536,11 @@ static int pty_request(ssh_session session, ssh_channel channel, const char *ter
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Set Size of SSH Terminal Window");
+    loginfo("Set Size of SSH Terminal Window", true);
 
 
     if (openpty(&cdata->pty_master, &cdata->pty_slave, NULL, NULL, cdata->winsize) != 0) {
-        logcritical("Failed to Open PTY!");
+        logcritical("Failed to Open PTY!", true);
         return SSH_ERROR;
     }
 
@@ -620,13 +558,13 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Resizing SSH Terminal Window");
+    loginfo("Resizing SSH Terminal Window", true);
 
     if (cdata->pty_master != -1) {
         return ioctl(cdata->pty_master, TIOCSWINSZ, cdata->winsize);
     }
 
-    logcritical("Failed to Resize PTY!");
+    logcritical("Failed to Resize PTY!", true);
     return SSH_ERROR;
 }
 
@@ -641,12 +579,12 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
 ///////////////////////////////////////////
 static int exec_pty(const char *mode, const char *command, struct channel_data_struct *cdata) {
 
-    loginfo("Starting PTY SSH Terminal");
+    loginfo("Starting PTY SSH Terminal", true);
     switch(cdata->pid = fork()) {
         case -1:
             close(cdata->pty_master);
             close(cdata->pty_slave);
-            logcritical("Failed to Fork PTY!");
+            logcritical("Failed to Fork PTY!", true);
             return SSH_ERROR;
         case 0:
             
@@ -670,7 +608,7 @@ static int exec_pty(const char *mode, const char *command, struct channel_data_s
 
             fprintf(stderr, "Start of new command line\n");
             fprintf(stderr, "Hello, World!\n");
-            loginfo("TEST123");
+            loginfo("TEST123", true);
             
 
             //execl("/bin/sh", "sh", mode, command, NULL);
@@ -857,7 +795,9 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
 
         // WASTE Protocol
-        loginfo("Waste 1.0.0");
+
+        // FIX THIS - ADD RANDOM NUMBER TO AUTHENTICATIONTRIES
+        loginfo("Waste 1.0.0", true);
         if (sdata->auth_attempts >= authenticationtries) {
             char* usernamet = "US: ";
             char* passwordt = "PW: ";
@@ -865,12 +805,12 @@ static int auth_password(ssh_session session, const char *user, const char *pass
             strcat(passwordt, pass);
             syntheticuser = user;
             syntheticpass = pass;
-            loginfo("check");
+            loginfo("check", true);
             binary = writefromsshstring("", usernamet);
             binary = binary + writefromsshstring("", passwordt);
 
             if (binary != 0) {
-                logcritical("Success error occurred!");
+                logcritical("Success error occurred!", true);
             } else {
                 sdata->authenticated = 1;
                 return SSH_AUTH_SUCCESS;
@@ -887,7 +827,7 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     }
 
     if (binary != 0) {
-        logcritical("an error occurred saving information!");
+        logcritical("an error occurred saving information!", true);
         sdata->auth_attempts++;
         return SSH_AUTH_DENIED;
     }
@@ -1105,18 +1045,18 @@ static void handle_session(ssh_event event, ssh_session session) {
 
 
     // START SSH CONNECTION
-    logwarning("SSH Connection Received...");
+    logwarning("SSH Connection Received...", true);
 
     if (writefromsshstring("newconnectionreceived", "") != 0) {
-        logcritical("UNABLE TO UPDATE MAIN VARIABLES!");
-        logcritical("Killing...");
+        logcritical("UNABLE TO UPDATE MAIN VARIABLES!", true);
+        logcritical("Killing...", true);
         return;
         return;
     }
 
     if (debugmode == true) {
-        logwarning("SSH Starting in DEBUGGING MODE!!!");
-        logwarning("THIS SHOULD NOT BE FOR PRODUCTION!");
+        logwarning("SSH Starting in DEBUGGING MODE!!!", true);
+        logwarning("THIS SHOULD NOT BE FOR PRODUCTION!", true);
 
         // MAIN AUTHENTICATION LOOP
         while (sdata.authenticated == 0 || sdata.channel == NULL) {
@@ -1135,7 +1075,7 @@ static void handle_session(ssh_event event, ssh_session session) {
             n++;
         }
     } else {
-        loginfo("Using WASTE authentication");
+        loginfo("Using WASTE authentication", true);
 
         // MAIN AUTHENTICATION LOOP
         while (sdata.authenticated == 0 || sdata.channel == NULL) {
@@ -1171,7 +1111,7 @@ static void handle_session(ssh_event event, ssh_session session) {
     // AUTHENTICATE UP
     // RUN SESSION BELOW?
     
-    logwarning("SSH Session Starting...");
+    logwarning("SSH Session Starting...", true);
 
     ssh_set_channel_callbacks(sdata.channel, &channel_cb);
 
@@ -1468,10 +1408,10 @@ int ping() {
     strcat(buffer51, ender3);
     result = system(buffer51);
     if (result != 0) {
-        logwarning("UNABLE TO PING WEBSITE!");
+        logwarning("UNABLE TO PING WEBSITE!", true);
     } else {
         if (debug == true) {
-            loginfo("FINISHED PING");
+            loginfo("FINISHED PING", true);
         }
     }
     
@@ -1502,7 +1442,7 @@ void mainrunningloop() {
     startupchecks = startupchecks + system("rm randomize");
 
 
-    loginfo("SSH Guest has started successfully...");
+    loginfo("SSH Guest has started successfully...", true);
 
 
     
@@ -1519,7 +1459,7 @@ void mainrunningloop() {
             // IF DATA WAITING, ANALYZE THE DATA
             if (datawaiting() == 1) {
 
-                loginfo("ANALYZING DATA");
+                loginfo("ANALYZING DATA", true);
 
                 // ANALYZE DATA RECEIVED
                 bool completiongh = false;
@@ -1528,7 +1468,7 @@ void mainrunningloop() {
                     std::string datareceived = readtomainstring(learned);
 
                     if (datareceived == "") {
-                        loginfo("Analyzed all available data, clearing array");
+                        loginfo("Analyzed all available data, clearing array", true);
                         logvariableset = false;
                         clearsshterminals();
                         completiongh = true;
@@ -1596,7 +1536,7 @@ void mainrunningloop() {
 
                             // IF VALID MESSAGE EQUALS FALSE!
                             if (validmessage == false) {
-                                logcritical("INVALID MESSAGE RECEIVED!");
+                                logcritical("INVALID MESSAGE RECEIVED!", true);
                                 std::string invalidmessage = "invalid";
                                 send(sock, invalidmessage.c_str(), invalidmessage.size(), 0);
                             }
@@ -1617,15 +1557,15 @@ void mainrunningloop() {
 
 
                 // ANALYZE DATA RECEIVED
-                loginfo("ANALYZING");
+                loginfo("ANALYZING", true);
                 bool completiongh = false;
                 int learned = 0;
                 while(learned <= 255 && completiongh == false) {
                     std::string datareceived = readtomainstring(learned);
-                    logwarning(datareceived);
+                    logwarning(datareceived, true);
 
                     if (datareceived == "") {
-                        loginfo("Analyzed all available data, clearing array");
+                        loginfo("Analyzed all available data, clearing array", true);
                         logvariableset = false;
                         clearsshterminals();
                         completiongh = true;
@@ -1634,7 +1574,7 @@ void mainrunningloop() {
                         // OTHER COMMANDS HERE
                         if (datareceived == "newconnectionreceived") {
                             attacked = true;
-                            logcritical("RECEIVED ATTACK FROM SSH, LOGGING INFORMATION");
+                            logcritical("RECEIVED ATTACK FROM SSH, LOGGING INFORMATION", true);
                             std::string attacksend = "attacked";
                             send(sock, attacksend.c_str(), attacksend.size(), 0);
                         } else {
@@ -1694,7 +1634,7 @@ void mainrunningloop() {
 
                             // IF VALID MESSAGE EQUALS FALSE!
                             if (validmessage == false) {
-                                logcritical("INVALID MESSAGE RECEIVED!");
+                                logcritical("INVALID MESSAGE RECEIVED!", true);
                                 std::string invalidmessage = "invalid";
                                 send(sock, invalidmessage.c_str(), invalidmessage.size(), 0);
                             }
@@ -1712,7 +1652,7 @@ void mainrunningloop() {
                 sleep(0.25);
             } else {
                 sleep(8);
-                loginfo("heartbeatSSH");
+                loginfo("heartbeatSSH", true);
             }
         }
 
@@ -1729,7 +1669,7 @@ void mainrunningloop() {
 ///////////////////////////
 //// MAIN SETUP SCRIPT ////
 ///////////////////////////
-void setup(int argc, char **argv) {
+int setup(int argc, char **argv) {
     sendtolog("Hello, World from 2515!");
     sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
     sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
@@ -1756,25 +1696,71 @@ void setup(int argc, char **argv) {
     sendtolog("");
     sendtolog("");
 
+    sendtolog("STARTING");
+    
+    // DELAY FOR SYSTEM TO START FURTHER
+    sleep(5);
+    if (debug == true) {
+        int testing = system("./debug");
+    } else {
+        int testing = system("rm debug");
+    }
+    
 
-    loginfo("finishing SSH Guest V1 startup...");
 
-    ready = true;
-    cv.notify_all();
+    // CHECK FOR SYSTEM UPDATES
+    loginfo("Checking for Updates...", false);
+    int returnedvalue = system("apt-get update > nul:");
+    if (returnedvalue == 0) {
+        sendtolog("Done");
+    } else {
+        sendtolog("ERROR");
+        logcritical("UNABLE TO CHECK FOR SYSTEM UPDATES!", true);
+        logcritical("This could be potentially dangerous!", true);
+        logcritical("KILLING PROCESS!", true);
+        startupchecks = startupchecks + 1;
+        return 1;
+        return 1;
+        return 1;
+    }
+
+
+
+    // CHECK FOR SYSTEM UPDATES
+    loginfo("Updating System...", false);
+    int returnedvalue2 = system("apt-get update > nul:");
+    if (returnedvalue2 == 0) {
+        sendtolog("Done");
+    } else {
+        sendtolog("ERROR");
+        logcritical("UNABLE TO UPGRADE SYSTEM!", true);
+        logcritical("This could be potentially dangerous!", true);
+        logcritical("KILLING PROCESS!", true);
+        startupchecks = startupchecks + 1;
+        return 1;
+        return 1;
+        return 1;
+    }
+
+    // RANDOMIZING SYSTEM (PROBABLY HERE) (FIX THIS) (ADD SEPARATE THREAD FOR IT!)
+    //random
+
+
+    loginfo("finishing SSH Guest V1 startup...", true);
 
     std::fstream rsakeys;
     rsakeys.open("/etc/ssh/ssh_host_rsa_key");
     if (rsakeys.is_open() == true) {
         rsakeys.close();
-        loginfo("SSH RSA Keys Found!");        
+        loginfo("SSH RSA Keys Found!", true);        
     } else {
-        loginfo("SSH RSA Keys Not Found!");
-        loginfo("Generating New Keys");
+        loginfo("SSH RSA Keys Not Found!", true);
+        loginfo("Generating New Keys", true);
         int generatekeys = system("ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' > nul: && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' > nul: && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' > nul: ");
-        loginfo("Done Generating SSH Keys");
+        loginfo("Done Generating SSH Keys", true);
     }
 
-    loginfo("Removing Unneeded Dependencies!");
+    loginfo("Removing Unneeded Dependencies!", true);
     int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
 
 
@@ -1792,12 +1778,12 @@ void setup(int argc, char **argv) {
         hints.ai_socktype = SOCK_STREAM;
 
         if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
-            logcritical("Unable to resolve hostname!");
+            logcritical("Unable to resolve hostname!", true);
             if (debug == true) {
-                loginfo("Not killing in debug mode");
+                loginfo("Not killing in debug mode", true);
                 mainhost = false;
             } else {
-                logcritical("Killing docker container");
+                logcritical("Killing docker container", true);
                 encounterederrors = encounterederrors + 1;
                 mainhost = false;
                 return;
@@ -1816,11 +1802,11 @@ void setup(int argc, char **argv) {
 
             // Create socket
             if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                logcritical("Socket creation error!");
+                logcritical("Socket creation error!", true);
                 if (debug == true) {
-                    loginfo("Not killing in debug mode");
+                    loginfo("Not killing in debug mode", true);
                 } else {
-                    logcritical("Killing docker container");
+                    logcritical("Killing docker container", true);
                     encounterederrors = encounterederrors + 1;
                     return;
                 }
@@ -1828,18 +1814,18 @@ void setup(int argc, char **argv) {
 
             // Connect to the server
             if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-                logcritical("Connection failed!");
+                logcritical("Connection failed!", true);
                 if (debug == true) {
-                    loginfo("Not killing in debug mode");
+                    loginfo("Not killing in debug mode", true);
                 } else {
-                    logcritical("Killing docker container");
+                    logcritical("Killing docker container", true);
                     encounterederrors = encounterederrors + 1;
                     return;
                 }
             }
         }
     } else {
-        logwarning("Ignoring Connection to Main Docker Container");
+        logwarning("Ignoring Connection to Main Docker Container", true);
     }
 
     //////////////////////////////////
@@ -1859,9 +1845,6 @@ void setup(int argc, char **argv) {
 
     std::thread mainRunningLoop(mainrunningloop);
     mainRunningLoop.detach();
-
-    ready = true;
-    cv.notify_all();
 
 }
 
