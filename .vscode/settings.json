@@ -69,7 +69,20 @@
         "functional": "cpp",
         "future": "cpp",
         "xhash": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "deque": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "numeric": "cpp",
+        "random": "cpp",
+        "string_view": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp",
+        "cinttypes": "cpp"
     },
     "C_Cpp.errorSquiggles": "enabled",
 //    "C_Cpp.errorSquiggles": "disabled"

@@ -24,7 +24,6 @@ COPY . /usr/src/honeypi
 WORKDIR /usr/src/honeypi
 
 # Compile C++ Code
-RUN g++ -o honeypi start.cpp
 RUN g++ -o randomize randomize.cpp
 RUN g++ -o run running.cpp -lssh
 RUN g++ -o debug debug.cpp -lssh
@@ -36,7 +35,7 @@ RUN apt-get autoremove -y
 EXPOSE 22
 
 # Start Application Command
-ENTRYPOINT ["./honeypi"]
+ENTRYPOINT ["./run"]
 
 # Branch and Version Stuff
 LABEL Name=honeypotpi Version=0.0.2 
