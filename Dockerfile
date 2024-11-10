@@ -13,6 +13,7 @@ RUN apt-get install -y libssh-dev
 RUN apt-get install -y iputils-ping curl bash cron
 RUN apt-get install -y apt-utils dialog
 RUN apt-get install -y openssh-client openssh-server
+RUN apt-get install -y g++
 
 # Remove Standard SSH Keys
 RUN rm -f /etc/ssh/ssh_host_rsa_key
@@ -26,10 +27,16 @@ WORKDIR /usr/src/honeypi
 # Compile C++ Code
 RUN g++ -o randomize randomize.cpp
 RUN g++ -o run running.cpp -lssh
-RUN g++ -o debug debug.cpp -lssh
+RUN g++ -o beta beta.cpp -lssh
 
 # Remove Unneeded Dependencies
+RUN apt-get remove -y g++
 RUN apt-get autoremove -y
+
+# REMOVE FILES
+RUN rm running.cpp
+RUN rm beta.cpp
+RUN rm randomize.cpp
 
 # Expose the SSH port
 EXPOSE 22

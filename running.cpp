@@ -109,6 +109,7 @@ const bool runtomain = true;
 std::atomic<int> encounterederrors(0);
 std::atomic<int> mainhost(0);
 std::atomic<int> attacked(0);
+std::atomic<int> logvariableset(0);
 int startupchecks = 0;
 
 
@@ -178,7 +179,6 @@ std::map<int, char*> pingrandom = {
 
 
 // COMMUNICATION VARIABLES
-bool logvariableset = false;
 std::string sshterminals[255] = {};
 //std::vector<std::string> sshterminals(255, "");
 
@@ -408,6 +408,7 @@ int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
             }
         }
     }
+    return 1;
 }
 
 
@@ -1699,7 +1700,7 @@ int setup(int argc, char **argv) {
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
-    sleep(5);
+    sleep(1.5);
     if (debug == true) {
         int testing = system("./debug");
     } else {
@@ -1786,7 +1787,7 @@ int setup(int argc, char **argv) {
                 logcritical("Killing docker container", true);
                 encounterederrors = encounterederrors + 1;
                 mainhost = false;
-                return;
+                return 1;
             }
         }
 
@@ -1808,7 +1809,7 @@ int setup(int argc, char **argv) {
                 } else {
                     logcritical("Killing docker container", true);
                     encounterederrors = encounterederrors + 1;
-                    return;
+                    return 1;
                 }
             }
 
@@ -1820,7 +1821,7 @@ int setup(int argc, char **argv) {
                 } else {
                     logcritical("Killing docker container", true);
                     encounterederrors = encounterederrors + 1;
-                    return;
+                    return 1;
                 }
             }
         }
@@ -1835,10 +1836,7 @@ int setup(int argc, char **argv) {
     // SERVER PORT LISTEN THREAD(22)
     sendtologopen("[INFO] - Creating server thread on port 22 listen...");
 
-    std::atomic<bool> logvariableset;
- //   std::mutex mtx;
-
-    sleep(2);
+    sleep(1);
     std::thread acceptingClientsThread2(handleSSHConnections, argc, argv);
     acceptingClientsThread2.detach();
     sleep(1);
@@ -1846,6 +1844,7 @@ int setup(int argc, char **argv) {
     std::thread mainRunningLoop(mainrunningloop);
     mainRunningLoop.detach();
 
+    return 0;
 }
 
 
@@ -1865,4 +1864,5 @@ int main(int argc, char **argv) {
         sleep(100);
     }
 
+    return 255;
 }
