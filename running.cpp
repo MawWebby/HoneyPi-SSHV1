@@ -220,6 +220,8 @@ int hoursperday = 24;
 bool calculatingtime = false;
 
 
+// FIX THIS - ADD CLOSING HEADER!
+
 
 
 int timedetector() {
@@ -1344,57 +1346,6 @@ int handleSSHConnections (int argc, char **argv) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void thread1(std::promise<void>&& promise) {
-    std::unique_lock<std::mutex> lock(mtx);
-    while (!ready) {
-        cv.wait(lock);
-    }
-    std::cout << "Thread 1 received data: " << shared_data << sshterminals[0] << std::endl;
-
-    shared_data++;
-    ready = false;
-    cv.notify_all();
-    // Signal that thread1 has finished its work
-    promise.set_value();
-}
-
-void thread2(std::promise<void>&& promise) {
-    std::unique_lock<std::mutex> lock(mtx);
-    shared_data = 42;
-    sshterminals[0] = "TESTING123";
-    ready = true;
-    std::cout << "Thread 2 sent data: " << shared_data << sshterminals[0] << std::endl;
-    cv.notify_all();
-    while (ready) {
-        cv.wait(lock);
-    }
-    std::cout << "Thread 2 received updated data: " << shared_data << std::endl;
-    // Signal that thread2 has finished its work
-    promise.set_value();
-}
-*/
-
-
-
-
-
 int ping() {
     int testnumber = 0;
     testnumber = int((rand() % 60));
@@ -1444,14 +1395,68 @@ void mainrunningloop() {
 
 
     loginfo("SSH Guest has started successfully...", true);
-
+ 
 
     
     // MAIN THREAD CONSTANT LOOP
     while(true) {
+        loginfo("Resolving Main VM IP...", false);
+
+        if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
+            sendtolog("ERROR");
+            logcritical("Unable to resolve hostname!", true);
+            if (debug == true) {
+                loginfo("Not killing in debug mode", true);
+                mainhost = false;
+            } else {
+                logcritical("Killing docker container", true);
+                encounterederrors = encounterederrors + 1;
+                mainhost = false;
+                return;
+            }
+        } else {
+            sendtolog("Done");
+        }
+
+
+        loginfo("Connecting to Main VM...", false);
+        
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(63599);
+        serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
+
+        freeaddrinfo(res);
+
+        //    std::cout << char(serv_addr.sin_addr) << std::endl;
+
+        // Create socket
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            logcritical("Socket creation error!", true);
+            if (debug == true) {
+                loginfo("Not killing in debug mode", true);
+            } else {
+                logcritical("Killing docker container", true);
+                encounterederrors = encounterederrors + 1;
+                return;
+            }
+        }
+
+        // Connect to the server 63599
+        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+            logcritical("Connection failed!", true);
+            if (debug == true) {
+                loginfo("Not killing in debug mode", true);
+            } else {
+                logcritical("Killing docker container", true);
+                encounterederrors = encounterederrors + 1;
+                return;
+            }
+        }
 
         sleep(2);
         send(sock, heartbeat.c_str(), heartbeat.size(), 0);
+
+        close(sock);
 
 
         if (attacked == true) {
@@ -1772,13 +1777,17 @@ int setup(int argc, char **argv) {
 
     int PORT = 63599;
 
+    /*
     if (runtomain == true) {
         // Resolve the hostname to an IP address
         memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
 
+        loginfo("Resolving Main VM IP...", false);
+
         if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
+            sendtolog("ERROR");
             logcritical("Unable to resolve hostname!", true);
             if (debug == true) {
                 loginfo("Not killing in debug mode", true);
@@ -1789,45 +1798,48 @@ int setup(int argc, char **argv) {
                 mainhost = false;
                 return 1;
             }
+        } else {
+            sendtolog("Done");
         }
 
-        if (mainhost == true) {
 
-            serv_addr.sin_family = AF_INET;
-            serv_addr.sin_port = htons(PORT);
-            serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
+        loginfo("Connecting to Main VM...", false);
+        
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(PORT);
+        serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
 
-            freeaddrinfo(res);
+        freeaddrinfo(res);
 
-            //    std::cout << char(serv_addr.sin_addr) << std::endl;
+        //    std::cout << char(serv_addr.sin_addr) << std::endl;
 
-            // Create socket
-            if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                logcritical("Socket creation error!", true);
-                if (debug == true) {
-                    loginfo("Not killing in debug mode", true);
-                } else {
-                    logcritical("Killing docker container", true);
-                    encounterederrors = encounterederrors + 1;
-                    return 1;
-                }
-            }
-
-            // Connect to the server
-            if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-                logcritical("Connection failed!", true);
-                if (debug == true) {
-                    loginfo("Not killing in debug mode", true);
-                } else {
-                    logcritical("Killing docker container", true);
-                    encounterederrors = encounterederrors + 1;
-                    return 1;
-                }
+        // Create socket
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            logcritical("Socket creation error!", true);
+            if (debug == true) {
+                loginfo("Not killing in debug mode", true);
+            } else {
+                logcritical("Killing docker container", true);
+                encounterederrors = encounterederrors + 1;
+                return 1;
             }
         }
-    } else {
-        logwarning("Ignoring Connection to Main Docker Container", true);
+
+        // Connect to the server
+        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+            logcritical("Connection failed!", true);
+            if (debug == true) {
+                loginfo("Not killing in debug mode", true);
+            } else {
+                logcritical("Killing docker container", true);
+                encounterederrors = encounterederrors + 1;
+                return 1;
+            }
+        }
     }
+    sendtolog("done");
+    std::cout << sock << std::endl;
+    */
 
     //////////////////////////////////
     // START HOSTING ON SSH PORT 22 //
@@ -1861,6 +1873,9 @@ int main(int argc, char **argv) {
     setup(argc, argv);
 
     while(true) {
+
+        // ADD HEADERS HERE!
+
         sleep(100);
     }
 
