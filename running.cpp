@@ -28,8 +28,8 @@
 #include <unistd.h>
 #include <utmp.h>
 #define KEYS_FOLDER "/etc/ssh/"
-#define USER "myuser"
-#define PASS "l"
+#define USER "debugger"
+#define PASS "debugger123"
 #define BUF_SIZE 1048576
 #define SESSION_END (SSH_CLOSED | SSH_CLOSED_ERROR)
 #define SFTP_SERVER_PATH "/usr/lib/sftp-server"
@@ -110,6 +110,11 @@ std::atomic<int> encounterederrors(0);
 std::atomic<int> mainhost(0);
 std::atomic<int> attacked(0);
 std::atomic<int> logvariableset(0);
+std::atomic<int> sshloginattempts(0);
+std::atomic<int> sshmaxloginattempts(98);
+
+std::atomic<std::string*> syntheticuser;
+std::atomic<std::string*> syntheticpass;
 int startupchecks = 0;
 
 
@@ -190,11 +195,6 @@ struct sockaddr_in serv_addr;
 std::string hello = "Hello from client";
 char buffer[1024] = {0};
 
-
-// SSH VARIABLES
-std::string syntheticuser = "";
-std::string syntheticpass = "";
-int authenticationtries = 98;
 
 
 
@@ -342,11 +342,11 @@ int datawaiting() {
         return 1;
     } else {
         if (sshterminals[0] != "") {
-            loginfo("VARIABLE SET", true);
+            //loginfo("VARIABLE SET", true);
             attacked.store(1);
             return 1;
         } else {
-            loginfo("VARIABLE NOT SET", true);
+            //loginfo("VARIABLE NOT SET", true);
             attacked.store(0);
             return 0;
         }
@@ -781,6 +781,7 @@ static int subsystem_request(ssh_session session, ssh_channel channel, const cha
 //// AUTHORIZE SSH THROUGH PASSWORD METHOD ///////
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
+/*
 static int auth_password(ssh_session session, const char *user, const char *pass, void *userdata) {
     struct session_data_struct *sdata = (struct session_data_struct *) userdata;
 
@@ -840,8 +841,44 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 }
 
 
+*/
 
+static int auth_password(ssh_session session, const char *user, const char *pass, void *userdata) {
+    struct session_data_struct *sdata = (struct session_data_struct *) userdata;
 
+    (void) session;
+
+    if (debugmode == true) {
+        if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
+            sdata->authenticated = 1;
+            return SSH_AUTH_SUCCESS;
+        }
+    } else {
+        std::cout << "RECEIVED USER-" << user << "; PASS-" << pass << std::endl;
+        int maxattempt = sshmaxloginattempts.load();
+        int currentattempt = sshloginattempts.load();
+
+        if (maxattempt >= currentattempt) {
+            syntheticuser.store(new std::string(user));
+            syntheticpass.store(new std::string(pass));
+            return SSH_AUTH_SUCCESS;
+        } else {
+            currentattempt = currentattempt + 1;
+            sshloginattempts.store(currentattempt);
+            return SSH_AUTH_DENIED;
+        }
+        /*
+        if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
+            sdata->authenticated = 1;
+            return SSH_AUTH_SUCCESS;
+        }
+        */
+    }
+    
+
+    sdata->auth_attempts++;
+    return SSH_AUTH_DENIED;
+}
 
 
 
@@ -1097,15 +1134,20 @@ static void handle_session(ssh_event event, ssh_session session) {
 
             } else {
                 if (sdata.auth_attempts >= 98 || n >= 1000) {
+                    logwarning("CALLED TO RETURN (AUTH ATTEMPTS)", true);
                     return;
                 }
 
+                
                 if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
+                    logcritical("CALLED TO END", true);
                     fprintf(stderr, "%s\n", ssh_get_error(session));
                     return;
                 }
+                
             }
             n++;
+            sleep(1);
         }
     }
 
@@ -1400,7 +1442,8 @@ void mainrunningloop() {
     
     // MAIN THREAD CONSTANT LOOP
     while(true) {
-        loginfo("Resolving Main VM IP...", false);
+        // REMOVE DEBUGGING POINT
+        // loginfo("Resolving Main VM IP...", false);
 
         if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
             sendtolog("ERROR");
@@ -1418,8 +1461,8 @@ void mainrunningloop() {
             sendtolog("Done");
         }
 
-
-        loginfo("Connecting to Main VM...", false);
+        // REMOVE DEBUGGING POINT
+        // loginfo("Connecting to Main VM...", false);
         
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(63599);
@@ -1658,7 +1701,8 @@ void mainrunningloop() {
                 sleep(0.25);
             } else {
                 sleep(8);
-                loginfo("heartbeatSSH", true);
+                // REMOVE DEBUG POINT
+                //loginfo("heartbeatSSH", true);
             }
         }
 
