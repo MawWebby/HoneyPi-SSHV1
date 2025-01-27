@@ -1,40 +1,4 @@
-//////////////////
-// Dependencies //
-//////////////////
-#include <atomic>
-#include <arpa/inet.h>
-#include <ctime>
-#include <chrono>
-#include <cstring>
-#include <fcntl.h>
-#include <fstream>
-#include <iostream>
-#include <libssh/callbacks.h>
-#include <libssh/server.h>
-#include <map>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <pty.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string>
-#include <sys/ioctl.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <thread>
-#include <unistd.h>
-#include <utmp.h>
-#define KEYS_FOLDER "/etc/ssh/"
-#define USER "myuser"
-#define PASS "l"
-#define BUF_SIZE 1048576
-#define SESSION_END (SSH_CLOSED | SSH_CLOSED_ERROR)
-#define SFTP_SERVER_PATH "/usr/lib/sftp-server"
-#define DEF_STR_SIZE 1024
-#undef ssh_channel_callbacks_struct
+#include "globalvariables.h"
 
 
 
@@ -43,7 +7,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-const std::string honeyversion = "0.1.1";
+std::string honeyversion = "0.1.1";
 
 
 
@@ -113,69 +77,11 @@ std::atomic<int> logvariableset(0);
 int startupchecks = 0;
 
 
-// DICTIONARY
-std::map<int, char*> pingrandom = {
-    {0, " google.com"},
-    {1, " yahoo.com" },
-    {2, " youtube.com" },
-    {3, " gmail.com" },
-    {4, " stackoverflow.com" },
-    {5, " w3schools.com" },
-    {6, " facebook.com" },
-    {7, " instagram.com" },
-    {8, " whatsapp.com" },
-    {9, " x.com" },
-    {10, " wikipedia.org"},
-    {11, " yahoo.com" },
-    {12, " reddit.com" },
-    {13, " amazon.com" },
-    {14, " baidu.com" },
-    {15, " chatgpt.com" },
-    {16, " chatgpt.com" },
-    {17, " netflix.com" },
-    {18, " netflix.com" },
-    {19, " linkedin.com" },
-    {20, " linkedin.com"},
-    {21, " live.com" },
-    {22, " live.com" },
-    {23, " office.com" },
-    {24, " office.com" },
-    {25, " pinterest.com" },
-    {26, " pinterest.com" },
-    {27, " bing.com" },
-    {28, " bing.com" },
-    {29, " microsoftonline.com" },
-    {30, " discord.com"},
-    {31, " microsoft.com" },
-    {32, " twitch.tv" },
-    {33, " twitch.tv" },
-    {34, " microsoft.com" },
-    {35, " weather.com" },
-    {36, " weather.com" },
-    {37, " t.me" },
-    {38, " roblox.com " },
-    {39, " roblox.com" },
-    {40, " duckduckgo.com"},
-    {41, " quora.com" },
-    {42, " sharepoint.com" },
-    {43, " ebay.com" },
-    {44, " w3schools.com" },
-    {45, " facebook.com" },
-    {46, " instagram.com" },
-    {47, " whatsapp.com" },
-    {48, " pinterest.com" },
-    {49, " pinterest.com" },
-    {50, " stackoverflow.com"},
-    {51, " wikipedia.org" },
-    {52, " live.com" },
-    {53, " microsoft.com" },
-    {54, " youtube.com" },
-    {55, " youtube.com" },
-    {56, " google.com" },
-    {57, " google.com" },
-    {58, " google.com" },
-    {59, " google.com" }
-};
+// SIGNAL VARIABLES
+std::atomic<int> stopSIGNAL(0);
+std::atomic<int> updateSIGNAL(0);
+std::atomic<int> serverErrors(0);
+std::atomic<int> serverStarted(0);
 
 
 // COMMUNICATION VARIABLES
@@ -202,13 +108,6 @@ int authenticationtries = 98;
 long long int startuptime = 0;
 long long int currenttime = 0;
 long long int timesincestartup = 0;
-int currenthour = 0;
-int currentminute = 0;
-int currentsecond = 0;
-int currentdayofyear = 0;
-int currentdays = 0;
-int currentyear = 0;
-int currentmonth = 0;
 int secondsperyear = 31536000;
 int daysperyear = 365.25;
 int secondsperday = 86400;
@@ -220,112 +119,6 @@ int hoursperday = 24;
 bool calculatingtime = false;
 
 
-// FIX THIS - ADD CLOSING HEADER!
-
-
-
-int timedetector() {
-    if (calculatingtime == true) {
-        std::cout << "[WARNING] - Call to Time Calculation Called While Already Processing!" << std::endl;
-        return 1;
-
-    }  else {
-        // TIME
-        currenttime = time(NULL);
-
-        // CURRENT SECONDS
-        timesincestartup = currenttime - startuptime;
-        currentsecond = currenttime % secondsperminute;
-
-        // CURRENT MINUTES
-        currentminute = currenttime - currentsecond;
-        currentminute = currentminute % 3600;
-        currentminute = currentminute / 60;
-
-        // CURRENT HOURS
-        currenthour = currenttime - ((currentminute * 60) + currentsecond);
-        currenthour = currenthour % hoursperday;
-        
-        // CURRENT DAYS
-        currentdays = currenttime - ((currenthour * 3600) + (currentminute * 60) + currentsecond);
-        currentdays = currentdays / 86400;
-
-        // CURRENT YEARS
-        currentyear = 1970 + (currentdays / 365.25);
-
-        // DEBUG PRINT VALUES TO CONSOLE
-        if (debug == true) {
-            std::cout << currentsecond << std::endl;
-            std::cout << currentminute << std::endl;
-            std::cout << currenthour << std::endl;
-            std::cout << currentdays << std::endl;
-            std::cout << currentyear << std::endl;
-        }
-
-        return 0;
-    }
-
-    return 1;
-}
-
-
-
-
-
-
-
-
-////////////////////////////
-// Send to Logger Scripts //
-////////////////////////////
-void sendtolog(std::string data2) {
-    std::cout << data2 << std::endl;
-}
-
-void sendtologopen(std::string data2) {
-    std::cout << data2;
-}
-
-void logdebug(std::string data2, bool complete) {
-    data2 = "[DEBUG] - " + data2;
-    if (complete == false) {
-        sendtologopen(data2);
-    } else {
-        sendtolog(data2);
-    }
-}
-
-void loginfo(std::string data2, bool complete) {
-    data2 = "[INFO] - " + data2;
-    if (complete == false) {
-        sendtologopen(data2);
-    } else {
-        sendtolog(data2);
-    }
-}
-
-void logwarning(std::string data2, bool complete) {
-    data2 = "[WARNING] - " + data2;
-    if (complete == false) {
-        sendtologopen(data2);
-    } else {
-        sendtolog(data2);
-    }
-}
-
-void logcritical(std::string data2, bool complete) {
-    data2 = "[CRITICAL] - " + data2;
-    if (complete == false) {
-        sendtologopen(data2);
-    } else {
-        sendtolog(data2);
-    }
-}
-
-void logerror(std::string headerdata2, std::string errormessage) {
-    std::string data2 = "[ERROR] - " + headerdata2 + " - " + errormessage;
-    sendtolog(data2);
-}
 
 
 
@@ -1346,29 +1139,7 @@ int handleSSHConnections (int argc, char **argv) {
 
 
 
-int ping() {
-    int testnumber = 0;
-    testnumber = int((rand() % 60));
-    int result;
-    char buffer51[512];
-    const char* starter3 = "ping -c 5 ";
-    const char* ender3 = " > nul: ";
-    strcpy(buffer51, starter3);
-    char* pingtest = "";
-    pingtest = pingrandom[testnumber];
-    strcat(buffer51, pingtest);
-    strcat(buffer51, ender3);
-    result = system(buffer51);
-    if (result != 0) {
-        logwarning("UNABLE TO PING WEBSITE!", true);
-    } else {
-        if (debug == true) {
-            loginfo("FINISHED PING", true);
-        }
-    }
-    
-    return result;
-}
+
 
 
 
@@ -1388,7 +1159,7 @@ int ping() {
 
 void mainrunningloop() {
 
-    int testing234 = ping();
+    int testing234 = pingnetwork();
 
     startupchecks = startupchecks + system("rm honeypi");
     startupchecks = startupchecks + system("rm randomize");
@@ -1855,6 +1626,15 @@ int setup(int argc, char **argv) {
 
     std::thread mainRunningLoop(mainrunningloop);
     mainRunningLoop.detach();
+
+    
+    /////////////////////////////////////
+    //// CREATE ADMIN CONSOLE THREAD ////
+    /////////////////////////////////////
+    loginfo("Creating SSH Admin Console...", false);
+    std::thread adminConsole(interactiveTerminal);
+    adminConsole.detach();
+    sendtolog("Done");
 
     return 0;
 }
