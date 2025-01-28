@@ -34,9 +34,17 @@ RUN apt-get remove -y g++
 RUN apt-get autoremove -y
 
 # REMOVE FILES
-RUN rm running.cpp
-RUN rm beta.cpp
-RUN rm randomize.cpp
+RUN mv randomize /usr/src/randomize
+RUN mv run /usr/src/run
+RUN mv beta /usr/src/beta
+RUN rm /usr/src/honeypi/*
+RUN mv /usr/src/randomize /usr/src/honeypi/randomize
+RUN mv /usr/src/run /usr/src/honeypi/run
+RUN mv /usr/src/beta /usr/src/honeypi/beta
+
+# MKDIR FOR LOG FILES
+RUN mkdir /var/rund
+RUN touch /var/rund/log.txt
 
 # Expose the SSH port
 EXPOSE 22
@@ -45,7 +53,7 @@ EXPOSE 22
 ENTRYPOINT ["./run"]
 
 # Branch and Version Stuff
-LABEL Name=honeypotpi Version=0.0.2 
+LABEL Name=honeypotpi Version=0.2.0
 
 
 
