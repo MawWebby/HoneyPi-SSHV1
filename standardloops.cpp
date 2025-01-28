@@ -10,13 +10,12 @@ int updating;
 int stopping;
 
 // LOGFILE
-const char* logfile = "/home/serverdump/log.txt";
-const char* packetfile = "/home/serverdump/packetlog.txt";
+const char* logfile = "/var/rund/log.txt";
 
 
 
 // DICTIONARY
-std::map<int, char*> pingrandom = {
+std::map<int, std::string> pingrandom = {
     {0, " google.com"},
     {1, " yahoo.com" },
     {2, " youtube.com" },
@@ -581,6 +580,7 @@ std::string inttostring(int value) {
                 break;
         }
     }
+    return returnvalue;
 }
 
 
@@ -593,18 +593,14 @@ int pingnetwork() {
     int testnumber = 0;
     testnumber = int((rand() % 60));
     int result;
-    char buffer51[512];
-    const char* starter3 = "ping -c 5 ";
-    const char* ender3 = " > nul: ";
-    strcpy(buffer51, starter3);
-    char* pingtest = "";
-    pingtest = pingrandom[testnumber];
-    strcat(buffer51, pingtest);
-    strcat(buffer51, ender3);
-    result = system(buffer51);
+    std::string starter3 = "ping -c 5 ";
+    std::string ender3 = " > nul: ";
+    std::string pingnetworkcom = "";
+    pingnetworkcom = pingnetworkcom + starter3;
+    pingnetworkcom = pingnetworkcom + pingrandom[testnumber];
+    result = system(pingnetworkcom.c_str());
     if (result != 0) {
         logwarning("UNABLE TO PING WEBSITE!", true);
     }
-    
     return result;
 }
