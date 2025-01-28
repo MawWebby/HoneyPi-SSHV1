@@ -861,13 +861,6 @@ static void handle_session(ssh_event event, ssh_session session) {
     // START SSH CONNECTION
     logwarning("SSH Connection Received...", true);
 
-    if (writefromsshstring("newconnectionreceived", "") != 0) {
-        logcritical("UNABLE TO UPDATE MAIN VARIABLES!", true);
-        logcritical("Killing...", true);
-        return;
-        return;
-    }
-
     if (debugmode == true) {
         logwarning("SSH Starting in DEBUGGING MODE!!!", true);
         logwarning("THIS SHOULD NOT BE FOR PRODUCTION!", true);
@@ -1163,7 +1156,19 @@ int handleSSHConnections (int argc, char **argv) {
 
 
 
-
+///////////////////////////////////////
+//// RANDOM PACKAGE INSTALL THREAD ////
+///////////////////////////////////////
+void randompackagethread() {
+    loginfo("Randomizing Packages!", true);
+    int returntype = system("/usr/src/honeypi/randomize");
+    if (returntype == 0) {
+        loginfo("Randomized System Successfully", true);
+    } else {
+        logwarning("RANDOMIZE RETURN == ", false);
+        sendtolog(inttostring(returntype));
+    }
+}
 
 
 
@@ -1290,10 +1295,9 @@ void mainrunningloop() {
 
                             // USERNAME
                             if (subsystempart == "US") {
-                                char* rainbows = "USE: ";
-                                strcat(rainbows, restofmessage.c_str());
-
-                                send(sock, rainbows, strlen(rainbows), 0);
+                                std::string rainbows = "USE: ";
+                                rainbows = rainbows + restofmessage;
+                                send(sock, rainbows.c_str(), rainbows.length(), 0);
                                 validmessage = true;
                             }
 
@@ -1388,10 +1392,9 @@ void mainrunningloop() {
 
                             // USERNAME
                             if (subsystempart == "US") {
-                                char* rainbows = "USE: ";
-                                strcat(rainbows, restofmessage.c_str());
-
-                                send(sock, rainbows, strlen(rainbows), 0);
+                                std::string rainbows = "USE: ";
+                                rainbows = rainbows + restofmessage;
+                                send(sock, rainbows.c_str(), rainbows.length(), 0);
                                 validmessage = true;
                             }
 
@@ -1472,6 +1475,11 @@ void mainrunningloop() {
 //// MAIN SETUP SCRIPT ////
 ///////////////////////////
 int setup(int argc, char **argv) {
+    // LOGFILE
+    system("rm /var/rund/log.txt");
+    system("touch /var/rund/log.txt");
+
+    // START
     sendtolog("Hello, World from 2515!");
     sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
     sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
@@ -1497,7 +1505,6 @@ int setup(int argc, char **argv) {
     sendtolog("");
     sendtolog("");
     sendtolog("");
-
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
@@ -1523,7 +1530,7 @@ int setup(int argc, char **argv) {
         startupchecks = startupchecks + 1;
         return 1;
         return 1;
-        return 1;
+        return 1; 
     }
 
 
@@ -1546,9 +1553,11 @@ int setup(int argc, char **argv) {
 
     // RANDOMIZING SYSTEM (PROBABLY HERE) (FIX THIS) (ADD SEPARATE THREAD FOR IT!)
     //random
+    std::thread randompack(randompackagethread);
+    randompack.detach();
 
 
-    loginfo("finishing SSH Guest V1 startup...", true);
+    loginfo("Finishing SSH Guest V1 startup...", true);
 
     std::fstream rsakeys;
     rsakeys.open("/etc/ssh/ssh_host_rsa_key");
