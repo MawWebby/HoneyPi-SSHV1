@@ -6,14 +6,14 @@
 #include <iostream>
 
 
-const char* starter2 = "apt-get install -y -qq ";
-const char* endstring = " > nul:";
+std::string starter2 = "apt-get install -y -qq ";
+std::string endstring = " > nul:";
 
 int packages[30] = {};
-const char* sentence = "";
+std::string sentence = "";
 
 
-std::map<int, char*> packagedictionary = {
+std::map<int, std::string> packagedictionary = {
     {0, " atop "},
     {1, " htop "},
     {2, " build-essential "},
@@ -103,9 +103,8 @@ void logcritical(std::string data2) {
 
 int main() {
 
-    char buffer4[2056]; // <-- Enough room for both strings and a NULL character
-    strcpy(buffer4, starter2);  // Copy in the first string
-    char* rainbow = "";
+    std::string messagetosend = "";
+    messagetosend = messagetosend + starter2;
     loginfo("Called to insert random packages...");    
     sleep(3);
 
@@ -115,15 +114,14 @@ int main() {
     
     while (i <= 6) {
         i = i + 1;
-        rainbow = packagedictionary[int(rand() % 65)];
-        strcat(buffer4, rainbow);
+        messagetosend = messagetosend + packagedictionary[int(rand() % 65)];
     }
 
-    strcat(buffer4, endstring);
+    messagetosend = messagetosend + endstring;
     loginfo("installing packages");
 
     // PROCESS AT THE END
-    process = process + system(buffer4);
+    process = process + system(messagetosend.c_str());
 
     if (process != 0) {
         logcritical("Error Occurred in Installing Packages!");
