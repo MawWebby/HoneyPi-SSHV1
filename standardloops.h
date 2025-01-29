@@ -33,6 +33,9 @@ std::string inttostring(int);
 // NETWORK PING
 int pingnetwork();
 
+// NETWORK HOST
+int pinghost();
+
 #endif
 
 

@@ -598,9 +598,76 @@ int pingnetwork() {
     std::string pingnetworkcom = "";
     pingnetworkcom = pingnetworkcom + starter3;
     pingnetworkcom = pingnetworkcom + pingrandom[testnumber];
+    pingnetworkcom = pingnetworkcom + ender3;
     result = system(pingnetworkcom.c_str());
     if (result != 0) {
         logwarning("UNABLE TO PING WEBSITE!", true);
     }
     return result;
+}
+
+
+
+
+///////////////
+// PING HOST //
+///////////////
+int pinghost() {
+    struct addrinfo hints, *res;
+    int sock;
+    struct sockaddr_in serv_addr;   
+
+    if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
+        sendtolog("ERROR");
+        logcritical("Unable to resolve hostname!", true);
+        if (debug == true) {
+            loginfo("Not killing in debug mode", true);
+            mainhost = false;
+            return 1;
+        } else {
+            logcritical("Killing docker container", true);
+            encounterederrors = encounterederrors + 1;
+            mainhost = false;
+            return 50;
+        }
+    }
+    
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(63599);
+    serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
+
+    freeaddrinfo(res);
+
+
+    // Create socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        logcritical("Socket creation error!", true);
+        if (debug == true) {
+            loginfo("Not killing in debug mode", true);
+            return 1;
+        } else {
+            logcritical("Killing docker container", true);
+            encounterederrors = encounterederrors + 1;
+            return 50;
+        }
+    }
+
+    // Connect to the server 63599
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        logcritical("Connection failed!", true);
+        if (debug == true) {
+            loginfo("Not killing in debug mode", true);
+            return 1;
+        } else {
+            logcritical("Killing docker container", true);
+            encounterederrors = encounterederrors + 1;
+            return 50;
+        }
+    }
+
+    sleep(2);
+    send(sock, heartbeat.c_str(), heartbeat.size(), 0);
+
+    close(sock);
+    return 0;
 }
