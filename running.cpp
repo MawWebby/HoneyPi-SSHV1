@@ -6,7 +6,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-std::string honeyversion = "0.1.1";
+std::string honeyversion = "0.2.0";
 
 
 
@@ -47,7 +47,7 @@ std::string heartbeat = "heartbeatSSH";
 std::string attacksend = "attacked";
 
 // CONSTANT DEBUGGING SCRIPTS
-const bool debug = true;
+bool debug = true;
 const bool runtomain = true;
 
 // SYSTEM VARIABLES
@@ -75,7 +75,6 @@ std::string sshterminals[255] = {};
 //std::vector<std::string> sshterminals(255, "");
 
 
-struct addrinfo hints, *res;
 
 int sock, valread;
 struct sockaddr_in serv_addr;
@@ -1179,86 +1178,197 @@ void randompackagethread() {
 
 
 
+///////////////////////////
+//// MAIN SETUP SCRIPT ////
+///////////////////////////
+int setup(int argc, char **argv) {
+    // LOGFILE
+    system("rm /var/rund/log.txt");
+    system("touch /var/rund/log.txt");
+
+    // START
+    sendtolog("Hello, World from 2515!");
+    sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
+    sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
+    sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ");
+    sendtolog("  |   |     |   |  /   /¯¯¯¯¯¯¯¯`   `   |     `    |  |  |  |____________     `  `    /   /             |   |______/   |        |   |        ");
+    sendtolog("  |    ¯¯¯¯¯    |  |   |         |   |  |      `   |  |  |               |     `  `  /   /              |   __________/         |   |        ");
+    sendtolog("  |    _____    |  |   |         |   |  |   |`  `  |  |  |               |      `  `/   /               |   |                   |   |        ");
+    sendtolog("  |   |     |   |  |   |         |   |  |   | `  ` |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯        |     |                |   |                   |   |        ");
+    sendtolog("  |   |     |   |  |   |         |   |  |   |  `  `|  |  |  |____________        |     |                |   |                   |   |        ");
+    sendtolog("  |   |     |   |  `   `¯¯¯¯¯¯¯¯¯    /  |   |   `     |  |               |       |     |                |   |             |¯¯¯¯¯     ¯¯¯¯¯|  ");
+    sendtolog("  |   |     |   |   `               /   |   |    `    |  |               |       |     |                |   |             |               |  ");
+    sendtolog("  ¯¯¯¯¯     ¯¯¯¯¯    ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯    ¯¯¯¯      `¯¯¯   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯                 ¯¯¯¯¯             ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   ");
+    sendtolog("GUEST SSH!");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("Program by Matthew Whitworth (MawWebby)");
+    sendtolog("Version " + honeyversion);
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("");
+    sendtolog("STARTING");
+    
+    // DELAY FOR SYSTEM TO START FURTHER
+    sleep(1.5);
+    if (debug == true) {
+        int testing = system("./debug");
+    } else {
+        int testing = system("rm debug");
+    }
+    
+
+
+    // CHECK FOR SYSTEM UPDATES
+    loginfo("Checking for Updates...", false);
+    int returnedvalue = system("apt-get update > nul:");
+    if (returnedvalue == 0) {
+        sendtolog("Done");
+    } else {
+        sendtolog("ERROR");
+        logcritical("UNABLE TO CHECK FOR SYSTEM UPDATES!", true);
+        logcritical("This could be potentially dangerous!", true);
+        logcritical("KILLING PROCESS!", true);
+        startupchecks = startupchecks + 1;
+        return 1;
+        return 1;
+        return 1; 
+    }
 
 
 
-// PLEASE WORK
+    // CHECK FOR SYSTEM UPDATES
+    loginfo("Updating System...", false);
+    int returnedvalue2 = system("apt-get update > nul:");
+    if (returnedvalue2 == 0) {
+        sendtolog("Done");
+    } else {
+        sendtolog("ERROR");
+        logcritical("UNABLE TO UPGRADE SYSTEM!", true);
+        logcritical("This could be potentially dangerous!", true);
+        logcritical("KILLING PROCESS!", true);
+        startupchecks = startupchecks + 1;
+        return 1;
+        return 1;
+        return 1;
+    }
+
+    // RANDOMIZING SYSTEM
+    loginfo("Starting Random Installation...", false);
+    std::thread randompack(randompackagethread);
+    randompack.detach();
+    sendtolog("DONE");
 
 
-void mainrunningloop() {
+    loginfo("Finishing SSH Guest V1 startup...", true);
 
+    std::fstream rsakeys;
+    rsakeys.open("/etc/ssh/ssh_host_rsa_key");
+    if (rsakeys.is_open() == true) {
+        rsakeys.close();
+        loginfo("SSH RSA Keys Found!", true);        
+    } else {
+        loginfo("SSH RSA Keys Not Found!", true);
+        loginfo("Generating New Keys", true);
+        int generatekeys = system("ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' > nul: && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' > nul: && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' > nul: ");
+        loginfo("Done Generating SSH Keys", true);
+    }
+
+    loginfo("Removing Unneeded Dependencies!", true);
+    int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
+
+
+
+    //////////////////////////////////////////////////////
+    // START CLIENT CONNECTION TO MAIN HONEYPI ON 63599 //
+    //////////////////////////////////////////////////////
+
+    int PORT = 63599;
+
+
+
+
+    //////////////////////////////////
+    // START HOSTING ON SSH PORT 22 //
+    //////////////////////////////////
+
+    // SERVER PORT LISTEN THREAD(22)
+    sendtologopen("[INFO] - Creating server thread on port 22 listen...");
+
+    sleep(1);
+    std::thread acceptingClientsThread2(handleSSHConnections, argc, argv);
+    acceptingClientsThread2.detach();
+    sleep(1);
+
+
+    
+    /////////////////////////////////////
+    //// CREATE ADMIN CONSOLE THREAD ////
+    /////////////////////////////////////
+    loginfo("Creating SSH Admin Console...", false);
+    std::thread adminConsole(interactiveTerminal);
+    adminConsole.detach();
+    sendtolog("Done");
+
+    return 0;
+}
+
+
+
+
+
+
+
+/////////////////////////////
+//// MAIN LOOPING SCRIPT ////
+/////////////////////////////
+int main(int argc, char **argv) {
+
+    setup(argc, argv);
+
+    // PING NETWORK TEST  
     int testing234 = pingnetwork();
 
+    // STARTUPCHECKS FINAL
     startupchecks = startupchecks + system("rm honeypi");
     startupchecks = startupchecks + system("rm randomize");
 
 
     loginfo("SSH Guest has started successfully...", true);
- 
-
     
-    // MAIN THREAD CONSTANT LOOP
-    while(true) {
-        // REMOVE DEBUGGING POINT
-        // loginfo("Resolving Main VM IP...", false);
+    // RUNNING FLAGS
+    int serverstop = 0;
+    int serverupdate = 0;
+    int serverrunning = 1;
+    stopSIGNAL.store(0);
+    updateSIGNAL.store(0);
+    serverStarted.store(1);
 
-        if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
-            sendtolog("ERROR");
-            logcritical("Unable to resolve hostname!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-                mainhost = false;
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                mainhost = false;
-                return;
-            }
-        } else {
-            sendtolog("Done");
+    while(serverstop == 0 && serverupdate == 0 && serverrunning == 1) {
+
+        // READ RUNNNING FLAGS
+        int serverstop = 0;
+        int serverupdate = 0;
+        int serverrunning = 1;
+
+        // SEND HEARTBEAT TO HOST
+        int pingheart = pinghost();
+        if (pingheart == 50) {
+            logcritical("AN ECEPTION OCCURRED THAT CAN NOT BE RECOVERED HAPPENED TRYING TO PING HOST!", true);
+            logcritical("KILLING!", true);
+            return 25;
+            return 25;
+            return 25;
+        } else if (pingheart == 1) {
+            logcritical("AN ERROR OCCURRED SEARCHING FOR HOST!", true);
         }
 
-        // REMOVE DEBUGGING POINT
-        // loginfo("Connecting to Main VM...", false);
-        
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(63599);
-        serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
-
-        freeaddrinfo(res);
-
-        //    std::cout << char(serv_addr.sin_addr) << std::endl;
-
-        // Create socket
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            logcritical("Socket creation error!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                return;
-            }
-        }
-
-        // Connect to the server 63599
-        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            logcritical("Connection failed!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                return;
-            }
-        }
-
-        sleep(2);
-        send(sock, heartbeat.c_str(), heartbeat.size(), 0);
-
-        close(sock);
-
-
+        // ATTACKED
         if (attacked == true) {
             
 
@@ -1460,237 +1570,6 @@ void mainrunningloop() {
                 //loginfo("heartbeatSSH", true);
             }
         }
-
-    }    
-
-}
-
-
-
-
-
-
-
-///////////////////////////
-//// MAIN SETUP SCRIPT ////
-///////////////////////////
-int setup(int argc, char **argv) {
-    // LOGFILE
-    system("rm /var/rund/log.txt");
-    system("touch /var/rund/log.txt");
-
-    // START
-    sendtolog("Hello, World from 2515!");
-    sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
-    sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
-    sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ");
-    sendtolog("  |   |     |   |  /   /¯¯¯¯¯¯¯¯`   `   |     `    |  |  |  |____________     `  `    /   /             |   |______/   |        |   |        ");
-    sendtolog("  |    ¯¯¯¯¯    |  |   |         |   |  |      `   |  |  |               |     `  `  /   /              |   __________/         |   |        ");
-    sendtolog("  |    _____    |  |   |         |   |  |   |`  `  |  |  |               |      `  `/   /               |   |                   |   |        ");
-    sendtolog("  |   |     |   |  |   |         |   |  |   | `  ` |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯        |     |                |   |                   |   |        ");
-    sendtolog("  |   |     |   |  |   |         |   |  |   |  `  `|  |  |  |____________        |     |                |   |                   |   |        ");
-    sendtolog("  |   |     |   |  `   `¯¯¯¯¯¯¯¯¯    /  |   |   `     |  |               |       |     |                |   |             |¯¯¯¯¯     ¯¯¯¯¯|  ");
-    sendtolog("  |   |     |   |   `               /   |   |    `    |  |               |       |     |                |   |             |               |  ");
-    sendtolog("  ¯¯¯¯¯     ¯¯¯¯¯    ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯    ¯¯¯¯      `¯¯¯   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯                 ¯¯¯¯¯             ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   ");
-    sendtolog("GUEST SSH!");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("Program by Matthew Whitworth (MawWebby)");
-    sendtolog("Version " + honeyversion);
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("STARTING");
-    
-    // DELAY FOR SYSTEM TO START FURTHER
-    sleep(1.5);
-    if (debug == true) {
-        int testing = system("./debug");
-    } else {
-        int testing = system("rm debug");
-    }
-    
-
-
-    // CHECK FOR SYSTEM UPDATES
-    loginfo("Checking for Updates...", false);
-    int returnedvalue = system("apt-get update > nul:");
-    if (returnedvalue == 0) {
-        sendtolog("Done");
-    } else {
-        sendtolog("ERROR");
-        logcritical("UNABLE TO CHECK FOR SYSTEM UPDATES!", true);
-        logcritical("This could be potentially dangerous!", true);
-        logcritical("KILLING PROCESS!", true);
-        startupchecks = startupchecks + 1;
-        return 1;
-        return 1;
-        return 1; 
-    }
-
-
-
-    // CHECK FOR SYSTEM UPDATES
-    loginfo("Updating System...", false);
-    int returnedvalue2 = system("apt-get update > nul:");
-    if (returnedvalue2 == 0) {
-        sendtolog("Done");
-    } else {
-        sendtolog("ERROR");
-        logcritical("UNABLE TO UPGRADE SYSTEM!", true);
-        logcritical("This could be potentially dangerous!", true);
-        logcritical("KILLING PROCESS!", true);
-        startupchecks = startupchecks + 1;
-        return 1;
-        return 1;
-        return 1;
-    }
-
-    // RANDOMIZING SYSTEM (PROBABLY HERE) (FIX THIS) (ADD SEPARATE THREAD FOR IT!)
-    //random
-    std::thread randompack(randompackagethread);
-    randompack.detach();
-
-
-    loginfo("Finishing SSH Guest V1 startup...", true);
-
-    std::fstream rsakeys;
-    rsakeys.open("/etc/ssh/ssh_host_rsa_key");
-    if (rsakeys.is_open() == true) {
-        rsakeys.close();
-        loginfo("SSH RSA Keys Found!", true);        
-    } else {
-        loginfo("SSH RSA Keys Not Found!", true);
-        loginfo("Generating New Keys", true);
-        int generatekeys = system("ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' > nul: && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' > nul: && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' > nul: ");
-        loginfo("Done Generating SSH Keys", true);
-    }
-
-    loginfo("Removing Unneeded Dependencies!", true);
-    int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
-
-
-
-    //////////////////////////////////////////////////////
-    // START CLIENT CONNECTION TO MAIN HONEYPI ON 63599 //
-    //////////////////////////////////////////////////////
-
-    int PORT = 63599;
-
-    /*
-    if (runtomain == true) {
-        // Resolve the hostname to an IP address
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-
-        loginfo("Resolving Main VM IP...", false);
-
-        if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
-            sendtolog("ERROR");
-            logcritical("Unable to resolve hostname!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-                mainhost = false;
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                mainhost = false;
-                return 1;
-            }
-        } else {
-            sendtolog("Done");
-        }
-
-
-        loginfo("Connecting to Main VM...", false);
-        
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(PORT);
-        serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
-
-        freeaddrinfo(res);
-
-        //    std::cout << char(serv_addr.sin_addr) << std::endl;
-
-        // Create socket
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            logcritical("Socket creation error!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                return 1;
-            }
-        }
-
-        // Connect to the server
-        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            logcritical("Connection failed!", true);
-            if (debug == true) {
-                loginfo("Not killing in debug mode", true);
-            } else {
-                logcritical("Killing docker container", true);
-                encounterederrors = encounterederrors + 1;
-                return 1;
-            }
-        }
-    }
-    sendtolog("done");
-    std::cout << sock << std::endl;
-    */
-
-    //////////////////////////////////
-    // START HOSTING ON SSH PORT 22 //
-    //////////////////////////////////
-
-    // SERVER PORT LISTEN THREAD(22)
-    sendtologopen("[INFO] - Creating server thread on port 22 listen...");
-
-    sleep(1);
-    std::thread acceptingClientsThread2(handleSSHConnections, argc, argv);
-    acceptingClientsThread2.detach();
-    sleep(1);
-
-    std::thread mainRunningLoop(mainrunningloop);
-    mainRunningLoop.detach();
-
-    
-    /////////////////////////////////////
-    //// CREATE ADMIN CONSOLE THREAD ////
-    /////////////////////////////////////
-    loginfo("Creating SSH Admin Console...", false);
-    std::thread adminConsole(interactiveTerminal);
-    adminConsole.detach();
-    sendtolog("Done");
-
-    return 0;
-}
-
-
-
-
-
-
-
-/////////////////////////////
-//// MAIN LOOPING SCRIPT ////
-/////////////////////////////
-int main(int argc, char **argv) {
-
-    setup(argc, argv);
-
-    while(true) {
-
-        // ADD HEADERS HERE!
-
-        sleep(100);
     }
 
     return 255;
