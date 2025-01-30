@@ -7,7 +7,7 @@
 
 
 std::string starter2 = "apt-get install -y -qq ";
-std::string endstring = " > nul:";
+std::string endstring = " > /dev/null 2>&1";
 
 int packages[30] = {};
 std::string sentence = "";
@@ -108,7 +108,7 @@ int main() {
     loginfo("Called to insert random packages...");    
     sleep(3);
 
-    int process = system("echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections");
+    //int process = system("echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections");
 
     int i = 0;
     
@@ -118,10 +118,13 @@ int main() {
     }
 
     messagetosend = messagetosend + endstring;
+    // PACKAGES
+    std::cout << "PACKAGES: " << messagetosend << std::endl;
+
     loginfo("installing packages");
 
     // PROCESS AT THE END
-    process = process + system(messagetosend.c_str());
+    int process = system(messagetosend.c_str());
 
     if (process != 0) {
         logcritical("Error Occurred in Installing Packages!");
