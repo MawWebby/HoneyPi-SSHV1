@@ -26,7 +26,7 @@ WORKDIR /usr/src/honeypi
 
 # Compile C++ Code
 RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp -lssh
+RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp authtoken.cpp -lssh
 RUN g++ -o beta beta.cpp -lssh
 
 # Remove Unneeded Dependencies
