@@ -50,10 +50,12 @@
 // DEPENDENCY FILES
 #include "adminconsole.h"
 #include "standardloops.h"
+#include "authtoken.h"
 
 
 // SERVER VERSION
 extern std::string honeyversion;
+
 
 // SIGNALS
 extern std::atomic<int> stopSIGNAL;
@@ -62,8 +64,10 @@ extern std::atomic<int> serverStarted;
 extern std::atomic<int> mainhost;
 extern bool debug;
 
+
 // ERRORS LOGGED
 extern std::atomic<int> encounterederrors;
+
 
 // STRINGS TO MAIN SERVER
 extern std::string heartbeat;
