@@ -62,6 +62,8 @@ void level1access() {
     std::cout << "Level 1 Access:" << std::endl;
     std::cout << "shutdown    | (NO ARGS) | Shutdown the Server" << std::endl;
     std::cout << "ping        | (NO ARGS) | Ping Internet for Connectivity" << std::endl;
+    std::cout << "logs        | (NO ARGS) | View Logs of SSH Guets" << std::endl;
+    std::cout << "pinghost    | (NO ARGS) | Ping the Host Device" << std::endl;
 }
 
 void level0access() {
@@ -123,7 +125,7 @@ void processCommand(const std::string& command) {
         int result = 0;
 
         // FIX THIS
-        //result = logincredentials(username, password); 
+        result = logincredentials(username, password); 
         // FIX THIS
 
         if (result != 0) {
@@ -156,6 +158,23 @@ void processCommand(const std::string& command) {
         foundcommand = true;
     }
 
+    // PING HOST COMMAND
+    if (command == "pinghost") {
+        if (useraccesslevel >= 1) {
+            std::cout << "Pinging Host Device..." << std::endl;
+            int pingresults = pinghost();
+            if (pingresults == 0) {
+                std::cout << "OK" << std::endl;
+            } else if (pingresults == 1) {
+                std::cout << "Returned Value of 1! (Socket Creation Error)" << std::endl;
+            } else if (pingresults == 50) {
+                std::cout << "Returned Value of 50! (Socket Fail/Kill Error)" << std::endl;
+            } else {
+                std::cout << "UNKNOWN RETURN VALUE!" << std::endl;
+            }
+        }
+    }
+
     // SHUTDOWN COMMAND
     if (command == "shutdown") {
         if (useraccesslevel >= 1) {
@@ -169,7 +188,7 @@ void processCommand(const std::string& command) {
 
     // OPEN AND READ LOG FILES
     if (command == "logs") {
-        if (useraccesslevel >= 2) {
+        if (useraccesslevel >= 1) {
             readfromlogger();
         } else {
             std::cout << "Sorry, you do not have permissions to perform this action." << std::endl;
@@ -204,7 +223,7 @@ void processCommand(const std::string& command) {
 
     // LOCK PORTS
     if (firstfour == "lock") {
-        if (useraccesslevel >= 2) {
+        if (useraccesslevel >= 1) {
             std::string port = "";
             std::cout << "FIX THIS" << std::endl;
         } else {
@@ -215,7 +234,7 @@ void processCommand(const std::string& command) {
 
     // UNLOCK PORTS
     if (firstfour == "unlo") {
-        if (useraccesslevel >= 2) {
+        if (useraccesslevel >= 1) {
             std::string port = "";
             std::cout << "FIX THIS" << std::endl;
         } else {
