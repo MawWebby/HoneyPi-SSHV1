@@ -1334,10 +1334,6 @@ int main(int argc, char **argv) {
     // PING NETWORK TEST  
     int testing234 = pingnetwork();
 
-    // STARTUPCHECKS FINAL
-    startupchecks = startupchecks + system("rm honeypi");
-    startupchecks = startupchecks + system("rm randomize");
-
 
     loginfo("SSH Guest has started successfully...", true);
     
