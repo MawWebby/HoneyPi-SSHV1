@@ -34,7 +34,10 @@ std::string inttostring(int);
 int pingnetwork();
 
 // NETWORK HOST
+int compilepacket(std::string, int);
 int pinghost();
+int packettohost(std::string);
+
 
 #endif
 

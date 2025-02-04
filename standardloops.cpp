@@ -612,62 +612,274 @@ int pingnetwork() {
 ///////////////
 // PING HOST //
 ///////////////
+// 0 - USP - USERNAMES/PASSWORD COMBO
+// 1 - USE - USERNAME
+// 2 - PWD - PASSWORD
+// 3 - MUP - MULTIPLEIP
+// 4 - SUP - SINGLEIP
+// 5 - ADD - IPADDR
+// 6 - FIN - COMPLETE
+// 7 - CMD - COMMANDRUN
+// 8 - FVW - FILEVIEW
+// 9 - FCH - FILECHANGES
+// 10 - FED - FILEEDITS
+// 11 - SMM - SINGLE/MULTI MODE
+// 12 - EXA - EXTRAOPT ARRAY
+// 13 - EX1 - EXTRAOPT1
+// 14 - EX2 - EXTRAOPT2
+// 15 - EX3 - EXTRAOPT3
+// 16 - EX4 - EXTRAOPT4
+// 17 - EX5 - EXTRAOPT5
+// 18 - EX6 - EXTRAOPT6
+// 19 - EX7 - EXTRAOPT7
+// 20 - EX8 - EXTRAOPT8
+// 21 - EX9 - EXTRAOPT9
+// 22 - E10 - EXTRAOPT10
+// 23 - E11 - EXTRAOPT11
+// 24 - SOF - GUEST REPORT
+// 25 - ROP - reportV
+// 26 - CMB - COMMAND BLOCK
+// 27 - CMR - COMMAND RUN
+// 28 - KIL - TERMINATE SESSION
+// 29 - WAT - MAYDAY WATCHDOG KILL
+// 30 - MUR - BLOCK ALL CONTAINERS TO KILL (ACTIVE TARGET OF ATTACK)
+// 31 - TES - TEST
+// 32 - FTE - VERIFY TEST
+int compilepacket(std::string data1, int packetinto) {
+    std::string messagestring = "";
+
+    // CHECK FOR DATA1 CONDITION
+    if (data1 == "") {
+        logcritical("NULL DATA RECEIVED!", true);
+        return 200;
+    }
+
+    bool sendtohost = false;
+    switch(packetinto) {
+        case 0:
+            messagestring = "USP: " + data1;
+            sendtohost = true;
+            break;
+        case 1:
+            messagestring = "USE: " + data1;
+            sendtohost = true;
+            break;
+        case 2:
+            messagestring = "PWD: " + data1;
+            sendtohost = true;
+            break;
+        case 3:
+            messagestring = "MUP: " + data1;
+            sendtohost = true;
+            break;
+        case 4:
+            messagestring = "SUP: " + data1;
+            sendtohost = true;
+            break;
+        case 5:
+            messagestring = "ADD: " + data1;
+            sendtohost = true;
+            break;
+        case 6:
+            messagestring = "FIN: " + data1;
+            sendtohost = true;
+            break;
+        case 7:
+            messagestring = "CMD: " + data1;
+            sendtohost = true;
+            break;
+        case 8:
+            messagestring = "FVW: " + data1;
+            sendtohost = true;
+            break;
+        case 9:
+            messagestring = "FCH: " + data1;
+            sendtohost = true;
+            break;
+        case 10:
+            messagestring = "FED: " + data1;
+            sendtohost = true;
+            break;
+        case 11:
+            messagestring = "SMM: " + data1;
+            sendtohost = true;
+            break;
+        case 12:
+            messagestring = "EXA: " + data1;
+            sendtohost = true;
+            break;
+        case 13:
+            messagestring = "EX1: " + data1;
+            sendtohost = true;
+            break;
+        case 14:
+            messagestring = "EX2: " + data1;
+            sendtohost = true;
+            break;
+        case 15:
+            messagestring = "EX3: " + data1;
+            sendtohost = true;
+            break;
+        case 16:
+            messagestring = "EX4: " + data1;
+            sendtohost = true;
+            break;
+        case 17:
+            messagestring = "EX5: " + data1;
+            sendtohost = true;
+            break;
+        case 18:
+            messagestring = "EX6: " + data1;
+            sendtohost = true;
+            break;
+        case 19:
+            messagestring = "EX7: " + data1;
+            sendtohost = true;
+            break;
+        case 20:
+            messagestring = "EX8: " + data1;
+            sendtohost = true;
+            break;
+        case 21:
+            messagestring = "EX9: " + data1;
+            sendtohost = true;
+            break;
+        case 22:
+            messagestring = "E10: " + data1;
+            sendtohost = true;
+            break;
+        case 23:
+            messagestring = "E11: " + data1;
+            sendtohost = true;
+            break;
+        case 24:
+            messagestring = "SOF: " + data1;
+            sendtohost = true;
+            break;
+        case 25:
+            messagestring = "ROP: " + data1;
+            sendtohost = true;
+            break;
+        case 26:
+            messagestring = "CMB: " + data1;
+            sendtohost = true;
+            break;
+        case 27:
+            messagestring = "CMR: " + data1;
+            sendtohost = true;
+            break;
+        case 28:
+            messagestring = "KIL: " + data1;
+            sendtohost = true;
+            break;
+        case 29:
+            messagestring = "WAT: " + data1;
+            sendtohost = true;
+            break;
+        case 30:
+            messagestring = "MUR: " + data1;
+            sendtohost = true;
+            break;
+        case 31:
+            messagestring = "TES: " + data1;
+            sendtohost = true;
+            break;
+        case 32:
+            messagestring = "FTE: " + data1;
+            sendtohost = true;
+            break;
+        default:
+            logcritical("NO VALID INT RECEIVED TO CONNECT TO MAIN!", true);
+            logcritical("RECEIVED int=" + inttostring(packetinto) + " FOR:" + data1, true);
+            sendtohost = false;
+            break;
+    }
+
+    // SEND TO MAIN HOST
+    int returnvalues = 0;
+    if (sendtohost == true) {
+        returnvalues = packettohost(messagestring);
+    } else {
+        returnvalues = 100;
+    }
+    return returnvalues;
+}
+
+
+
+///////////////
+// PING HOST //
+///////////////
 int pinghost() {
-    struct addrinfo hints, *res;
-    int sock;
-    struct sockaddr_in serv_addr;   
+    int returnvalues = packettohost("heartbeatSSH");
+    return returnvalues;
+}
 
-    if (getaddrinfo("HoneyPiMain", nullptr, &hints, &res) != 0) {
-        sendtolog("ERROR");
-        logcritical("Unable to resolve hostname!", true);
-        if (debug == true) {
-            loginfo("Not killing in debug mode", true);
-            mainhost = false;
-            return 1;
-        } else {
-            logcritical("Killing docker container", true);
-            encounterederrors = encounterederrors + 1;
-            mainhost = false;
-            return 50;
-        }
+
+
+
+/////////////////////////
+// SEND PACKET TO HOST //
+/////////////////////////
+int packettohost(std::string packettosend) {
+    if (packettosend == "") {
+        return 1;
     }
+
+    // DEFAULT UTIL
+    std::string host = "HoneyPiMain";
+    std::string port = "63599";
+    struct addrinfo hints, *res, *p;
+    int status;
+    int socket_fd;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM; // TCP socket
     
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(63599);
-    serv_addr.sin_addr = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
-
-    freeaddrinfo(res);
-
-
-    // Create socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        logcritical("Socket creation error!", true);
-        if (debug == true) {
-            loginfo("Not killing in debug mode", true);
-            return 1;
-        } else {
-            logcritical("Killing docker container", true);
-            encounterederrors = encounterederrors + 1;
-            return 50;
-        }
+    if ((status = getaddrinfo(host.c_str(), port.c_str(), &hints, &res)) != 0) {
+        std::cerr << "getaddrinfo error: " << gai_strerror(status) << std::endl;
+        return 1;
     }
 
-    // Connect to the server 63599
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        logcritical("Connection failed!", true);
-        if (debug == true) {
-            loginfo("Not killing in debug mode", true);
-            return 1;
-        } else {
-            logcritical("Killing docker container", true);
-            encounterederrors = encounterederrors + 1;
-            return 50;
+    // Loop through the results and connect to the first valid one
+    for (p = res; p != nullptr; p = p->ai_next) {
+        if ((socket_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            continue;
         }
+
+        if (connect(socket_fd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(socket_fd);
+            continue;
+        }
+        break; // Connection successful
     }
 
-    sleep(2);
-    send(sock, heartbeat.c_str(), heartbeat.size(), 0);
+    if (p == nullptr) {
+        std::cerr << "Failed to connect" << std::endl;
+        freeaddrinfo(res);
+        return 1;
+    }
 
-    close(sock);
+    // Print the IP address of the connected server
+    void *addr;
+    char ipstr[INET6_ADDRSTRLEN];
+
+    if (p->ai_family == AF_INET) { // IPv4
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+        addr = &(ipv4->sin_addr);
+    } else { // IPv6
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+        addr = &(ipv6->sin6_addr);
+    }
+    inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+    std::cout << "Connected to " << host << " address: " << ipstr << std::endl;
+
+    // SEND PACKET TO HOST
+    send(socket_fd, packettosend.c_str(), packettosend.size(), 0);
+
+    freeaddrinfo(res); // Free the linked list
+
+    close(socket_fd);
     return 0;
 }
