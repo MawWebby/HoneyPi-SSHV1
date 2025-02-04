@@ -612,7 +612,8 @@ int pingnetwork() {
 ///////////////
 // PING HOST //
 ///////////////
-// 0 - USP - USERNAMES/PASSWORD COMBO
+// 0 - US1 - USERNAMES/PASSWORD COMBO
+// 33 - US2 - USERNAMES/PASSWORD COMBO.2
 // 1 - USE - USERNAME
 // 2 - PWD - PASSWORD
 // 3 - MUP - MULTIPLEIP
@@ -657,7 +658,7 @@ int compilepacket(std::string data1, int packetinto) {
     bool sendtohost = false;
     switch(packetinto) {
         case 0:
-            messagestring = "USP: " + data1;
+            messagestring = "US1: " + data1;
             sendtohost = true;
             break;
         case 1:
@@ -786,6 +787,10 @@ int compilepacket(std::string data1, int packetinto) {
             break;
         case 32:
             messagestring = "FTE: " + data1;
+            sendtohost = true;
+            break;
+        case 33:
+            messagestring = "US2: " + data1;
             sendtohost = true;
             break;
         default:
