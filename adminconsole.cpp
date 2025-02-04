@@ -64,6 +64,7 @@ void level1access() {
     std::cout << "ping        | (NO ARGS) | Ping Internet for Connectivity" << std::endl;
     std::cout << "logs        | (NO ARGS) | View Logs of SSH Guets" << std::endl;
     std::cout << "pinghost    | (NO ARGS) | Ping the Host Device" << std::endl;
+    std::cout << "sendtorep   | (NO ARGS) | Send All Report Flags to the Host and Verify Working" << std::endl;
 }
 
 void level0access() {
@@ -192,6 +193,75 @@ void processCommand(const std::string& command) {
             readfromlogger();
         } else {
             std::cout << "Sorry, you do not have permissions to perform this action." << std::endl;
+        }
+        foundcommand = true;
+    }
+
+    if (command == "sendtorep") {
+        if (useraccesslevel >= 1) {
+            std::cout << "Testing Full Report to Main Host!" << std::endl;
+            std::cout << "Verifying Main Host Connectivity...";
+            int pingresults = pinghost();
+            if (pingresults == 0) {
+                std::cout << "OK" << std::endl;
+            } else if (pingresults == 1) {
+                std::cout << "Returned Value of 1! (Socket Creation Error)" << std::endl;
+            } else if (pingresults == 50) {
+                std::cout << "Returned Value of 50! (Socket Fail/Kill Error)" << std::endl;
+            } else {
+                std::cout << "UNKNOWN RETURN VALUE!" << std::endl;
+            }
+
+            // CONTINUE ON TO SENDING COMMANDS
+            if (pingresults == 0) {
+                std::cout << "Setting Test Flag..." << std::endl;
+                pingresults = compilepacket("true", 31);
+                if (pingresults == 0) {
+                    std::cout << "OK" << std::endl;
+                } else {
+                    std::cout << "ERROR occurred while setting test flag to true. (" << pingresults << ")" << std::endl;
+                }
+            }
+
+            // CONTINUE IF PINGRESULTS CONTINUES TO EQUAL 0
+            if (pingresults == 0) {
+                std::cout << "Sending All Conditions to Host!" << std::endl;
+                int testflagargs = 0;
+                int testflagargsmax = 32;
+                int returntype = 0;
+                while (testflagargs < testflagargsmax) {
+                    std::cout << "Sending Flag #" << testflagargs << "..." << std::endl;
+                    returntype = compilepacket("test", testflagargs);
+                    if (returntype != 0) {
+                        std::cout << "ERROR (" << returntype << ")" << std::endl;
+                    }
+                    testflagargs = testflagargs + 1;
+                }
+                std::cout << "Testing Fail Conditions..." << std::endl;
+                int failcondition = 0;
+                failcondition = compilepacket("test", 100);
+                failcondition = failcondition + compilepacket("", 0);
+                if (failcondition == 300) {
+                    std::cout << "OK" << std::endl;
+                } else if (failcondition == 200) {
+                    std::cout << "ERROR (1)" << std::endl;
+                } else if (failcondition == 100) {
+                    std::cout << "ERROR (2)" << std::endl;
+                } else {
+                    std::cout << "ERROR (3)" << std::endl;
+                }
+                std::cout << "FINISHED" << std::endl;
+                std::cout << "Ending Report...";
+                int endreport = compilepacket("true", 6);
+                int testreport = compilepacket("false", 31);
+                int testsreport = compilepacket("true", 32);
+                if (endreport == 0 && testreport == 0 && testsreport == 0) {
+                    std::cout << "OK" << std::endl;
+                } else {
+                    std::cout << "ERROR" << std::endl;
+                }
+                std::cout << "On 'HoneyPiMain', type in the command 'compiletest' to verify connectivity." << std::endl;
+            }
         }
         foundcommand = true;
     }
