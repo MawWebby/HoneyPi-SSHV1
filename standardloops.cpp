@@ -878,7 +878,7 @@ int packettohost(std::string packettosend) {
         addr = &(ipv6->sin6_addr);
     }
     inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-    std::cout << "Connected to " << host << " address: " << ipstr << std::endl;
+    //std::cout << "Connected to " << host << " address: " << ipstr << std::endl;
 
     // SEND PACKET TO HOST
     send(socket_fd, packettosend.c_str(), packettosend.size(), 0);
