@@ -6,7 +6,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-std::string honeyversion = "0.2.0";
+std::string honeyversion = "0.3.0";
 
 
 
@@ -126,6 +126,19 @@ int datawaiting() {
     }
     
 }
+
+
+
+///////////////////////////////
+//// HANDLE DOCKER SIGNALS ////
+///////////////////////////////
+void handleSignal(int signal) {
+    if (signal == SIGTERM || signal == SIGINT) {
+        std::cout << "Received termination signal, shutting down gracefully..." << std::endl;
+        stopSIGNAL.store(1);     
+    }
+}
+
 
 
 
@@ -1221,6 +1234,14 @@ int setup(int argc, char **argv) {
     } else {
         int testing = system("rm debug");
     }
+
+
+    // SET DOCKER CONTAINER OPTIONS
+    loginfo("DOCKER - Setting Container Options...", false);
+    signal(SIGTERM, handleSignal);
+    signal(SIGINT, handleSignal);
+    sendtolog("OK");
+    sleep(0.5);
     
 
 

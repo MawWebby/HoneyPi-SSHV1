@@ -198,7 +198,7 @@ void processCommand(const std::string& command) {
     }
 
     if (command == "sendtorep") {
-        if (useraccesslevel >= 1) {
+        if (useraccesslevel >= 0) {
             std::cout << "Testing Full Report to Main Host!" << std::endl;
             std::cout << "Verifying Main Host Connectivity...";
             int pingresults = pinghost();
@@ -227,7 +227,7 @@ void processCommand(const std::string& command) {
             if (pingresults == 0) {
                 std::cout << "Sending All Conditions to Host!" << std::endl;
                 int testflagargs = 0;
-                int testflagargsmax = 32;
+                int testflagargsmax = 34;
                 int returntype = 0;
                 while (testflagargs < testflagargsmax) {
                     std::cout << "Sending Flag #" << testflagargs << "..." << std::endl;
@@ -329,7 +329,7 @@ void interactiveTerminal() {
     sleep(10);
     system("clear");
     std::cout << "HoneyPi Terminal" << std::endl;
-    std::cout << "HoneyPi Server Version: " << honeyversion << std::endl;
+    std::cout << "HoneyPi Version: " << honeyversion << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
