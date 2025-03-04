@@ -121,6 +121,12 @@ std::atomic<int> sshdatawaitingpipe;
 //std::atomic<std::string> sshcache;
 
 
+// STRING TO STORE DATA IN COMMAND
+std::string entirecommandstring = "";
+
+
+
+
 
 ////////////////////////////
 // Send to Logger Scripts //
@@ -148,7 +154,19 @@ void logcritical(std::string data2) {
 }
 
 
-// FIFO READER
+
+
+//////////////////////////////////////////////////
+// VIRTUAL TERMINL EMULATOR TO EXECUTE COMMANDS //
+//////////////////////////////////////////////////
+void virtualterminal(std::string command, int method) {
+
+}
+
+
+/////////////////
+// FIFO READER //
+/////////////////
 void readback() {
     std::cout << "OPENFD2" << std::endl;
 
@@ -160,14 +178,22 @@ void readback() {
     while (true) {
 
         char whyyy[100];
-        read(fd, whyyy, 100);
+        int bytes = read(fd, whyyy, 100);
+
+        std::cout << "BYTES READ: " << bytes << std::endl;
 
         std::string readfromfifo = whyyy;
+        readfromfifo = readfromfifo.substr(0, bytes);
         if (readfromfifo != "") {
-            std::cout << "CMD PIPE: " << whyyy << std::endl;
+            std::cout << readfromfifo << std::endl;
+            entirecommandstring = entirecommandstring + readfromfifo;
+            if (readfromfifo == "\n") {
+                virtualterminal(entirecommandstring, 1);
+            }
         }
     }
     close(fd);
+    return;
 }
 
 
@@ -301,6 +327,8 @@ static int data_function(ssh_session session, ssh_channel channel, void *data, u
 
     data = NULL;
 
+
+    close(cmdfifor);
     return n;
 }
 
