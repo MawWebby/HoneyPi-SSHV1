@@ -20,8 +20,17 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/x86_64-linux-gnu/c++/13",
-                "/usr/include/x86_64-linux-gnu"
+                "/usr/lib/aarch64-linux-gnu/glib-2.0/include",
+                "/usr/include/vte-2.91",
+                "/usr/include/glib-2.0",
+                "/usr/include",
+                "/usr/include/gtk-2.0",
+                "/usr/include/cairo",
+                "/usr/include/pango-1.0",
+                "/usr/include/harfbuzz",
+                "/usr/include/gtk-3.0/gdk",
+                "/usr/include/gdk-pixbuf-2.0",
+                "/usr/include/atk-1.0"
             ],
             "defines": [
                 "_DEBUG",
@@ -32,7 +41,7 @@
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x86"
+            "intelliSenseMode": "linux-gcc-arm64"
         }
     ],
     "version": 4
