@@ -45,13 +45,15 @@
 #define SFTP_SERVER_PATH "/usr/lib/sftp-server"
 #define DEF_STR_SIZE 1024
 #undef ssh_channel_callbacks_struct
+extern std::string endline;
 
 
 // DEPENDENCY FILES
 #include "adminconsole.h"
 #include "standardloops.h"
 #include "authtoken.h"
-
+#include "virtualterminal.h"
+#include "mainssh.h"
 
 // SERVER VERSION
 extern std::string honeyversion;
@@ -65,8 +67,20 @@ extern std::atomic<int> mainhost;
 extern bool debug;
 
 
+// FIFOS
+extern std::string sshfifo;
+extern std::string cmdfifo;
+
+
+// SSH VARIABLES
+extern char authorizedkeys[DEF_STR_SIZE];
+
+
+
 // ERRORS LOGGED
 extern std::atomic<int> encounterederrors;
+
+
 
 
 // STRINGS TO MAIN SERVER
