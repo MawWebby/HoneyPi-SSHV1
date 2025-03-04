@@ -279,9 +279,11 @@ struct session_data_struct {
 
 
 
-
-
-// COMES THROUGH HERE?
+////////////////////////////
+////////////////////////////
+//// READ DATA FUNCTION ////
+////////////////////////////
+////////////////////////////
 static int data_function(ssh_session session, ssh_channel channel, void *data, uint32_t len, int is_stderr, void *userdata) {
     struct channel_data_struct *cdata = (struct channel_data_struct *) userdata;
 
@@ -289,12 +291,19 @@ static int data_function(ssh_session session, ssh_channel channel, void *data, u
     (void) channel;
     (void) is_stderr;
 
-    if (len == 0 || cdata->pid < 1 || kill(cdata->pid, 0) < 0) {
-        return 0;
-    }
+    std::cout << "REACHED HERE IN DATA!!!" << std::endl;
 
-    return write(cdata->child_stdin, (char *) data, len);
+    int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
+
+    std::cout << (char *) data << std::endl;
+
+    int n = write(cmdfifor, (char *) data, len);
+
+    data = NULL;
+
+    return n;
 }
+
 
 
 
@@ -699,10 +708,28 @@ static void handle_session(ssh_event event, ssh_session session) {
 
         // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
         int fd = open(sshfifo.c_str(), O_RDWR);
+
+        int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
         
         while (true) {
             //std::cout << sshdatawaitingpipe.load() << std::endl;
                 
+
+            // READ DATA FROM PIPE
+            char buf[1000] = "";
+            ssh_channel_read(sdata.channel, buf, 1000, false);
+            // ssh_channel_read_nonblocking();
+            std::string bufact = buf;
+            std::cout << "HI" << bufact << std::endl;
+            if (bufact != "") {
+                std::cout << "SAW THIS: " << bufact << std::endl;
+            }
+            sleep(1);
+
+
+
+            // SEND DATA OVER THE PIPE
+            /*
             char whyyy[1000];
             n = read(fd, whyyy, 1000);
 
@@ -713,19 +740,10 @@ static void handle_session(ssh_event event, ssh_session session) {
                 //ssh_channel_write(sdata.channel, endline.c_str(), endline.length());
                 sshdatawaitingpipe.store(0);
             }
-            
-            
-            sleep(1);
-
-            /*
-            char buf[1000];
-            //ssh_channel_read(sdata.channel, buf, 1000, true);
-            std::string bufact = buf;
-            std::cout << "HI" << bufact << std::endl;
-            if (bufact != "") {
-                std::cout << "SAW THIS: " << bufact << std::endl;
-            }
                 */
+            
+            
+            //sleep(1);  
         }
     } 
     
