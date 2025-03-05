@@ -6,7 +6,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-std::string honeyversion = "0.3.0";
+std::string honeyversion = "0.4.0";
 
 
 
@@ -478,6 +478,8 @@ int setup(int argc, char **argv) {
 
 
 
+
+
     //////////////////////////////////////////////////////
     // START CLIENT CONNECTION TO MAIN HONEYPI ON 63599 //
     //////////////////////////////////////////////////////
@@ -487,40 +489,53 @@ int setup(int argc, char **argv) {
 
 
 
-    //////////////////////////////////
-    // START HOSTING ON SSH PORT 22 //
-    //////////////////////////////////
+
+    //////////////////////
+    // START FIFO PIPES //
+    //////////////////////
 
     // CREATE NEW PIPES
-    std::cout << "CREATING NEW SSH PIPE" << std::endl;
-    mkfifo(sshfifo.c_str(), 0666);
-    std::cout << "MADE PIPE1" << std::endl;
-    std::cout << "CREATING NEW WRITE PIPE" << std::endl;
-    mkfifo(cmdfifo.c_str(), 0666);
-    std::cout << "MADE PIPE2" << std::endl;
-
+    loginfo("Creating New FIFO Pipes...", false);
+    int ramble = mkfifo(sshfifo.c_str(), 0666);
+    int rugby = mkfifo(cmdfifo.c_str(), 0666);
+    if (ramble > 0 && rugby > 0) {
+        sendtolog("ERROR");
+        logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true);
+        startupchecks = startupchecks + 1;
+    } else {
+        sendtolog("DONE");
+    }
 
 
     // CREATE THREAD FOR NEW FIFO READER
-    std::cout << "CREATE FIFO READER FOR CMD" << std::endl;
-    std::thread hey(readback);
-    hey.detach();
+    loginfo("Creating New FIFO Reader...", false);
+    std::thread readbackthread(readback);
+    readbackthread.detach();
+    sendtolog("DONE");
 
 
     // CREATE SSH THREAD WRITER
-    std::cout << "Creating New SSH Writer" << std::endl;
+    loginfo("Creating New FIFO Writer...", false);
     std::thread sshterm(sshwriter);
     sshterm.detach();
+    sendtolog("DONE");
+
+
 
 
     
     /////////////////////////////////////
     //// CREATE ADMIN CONSOLE THREAD ////
     /////////////////////////////////////
-    loginfo("Creating SSH Admin Console...", false);
-    std::thread adminConsole(interactiveTerminal);
-    adminConsole.detach();
-    sendtolog("Done");
+    if (startupchecks == 0) {
+        loginfo("Starting SSH Admin Console...", false);
+        std::thread adminConsole(interactiveTerminal);
+        adminConsole.detach();
+        sendtolog("Done");
+    } else {
+        logcritical("NOT STARTING ADMIN CONSOLE!", true);
+    }
+    
 
     return 0;
 }
@@ -546,12 +561,11 @@ int main(int argc, char **argv) {
     ssh_event event;
     struct sigaction sa;
     int rc;
-    std::cout << "THIS IS TRUE" << std::endl;
+    int fd;
 
     //FIFO
-    int fd;
-    mkfifo(sshfifo.c_str(), 0666);
-    std::cout << "MADE PIPE1" << std::endl;
+    //mkfifo(sshfifo.c_str(), 0666);
+    //std::cout << "MADE PIPE1" << std::endl;
     //sleep(10);
 
     rc = ssh_init();
