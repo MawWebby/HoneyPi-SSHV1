@@ -570,88 +570,50 @@ void handle_session(ssh_event event, ssh_session session) {
         /* Executed only once, once the child process starts. */
 
 
-
-
-
-
-
         cdata.event = event; // DECLARATION?
 
 
 
-
-
-
-
-        // POLLING FOR COMMAND/RUNNING COMMAND?
-        /* If stdout valid, add stdout to be monitored by the poll event. */
-        /*
-        if (cdata.child_stdout != -1) {
-            if (ssh_event_add_fd(event, cdata.child_stdout, POLLIN, process_stdout,
-                                 sdata.channel) != SSH_OK) {
-                fprintf(stderr, "Failed to register stdout to poll context\n");
-                ssh_channel_close(sdata.channel);
-            }
-        }
-            */
-
-
-
-        
-        // NOT NEEDED IN CONTEXT?
-        /* If stderr valid, add stderr to be monitored by the poll event. 
-        if (cdata.child_stderr != -1){
-            if (ssh_event_add_fd(event, cdata.child_stderr, POLLIN, process_stderr,
-                                 sdata.channel) != SSH_OK) {
-                fprintf(stderr, "Failed to register stderr to poll context\n");
-                ssh_channel_close(sdata.channel);
-            }
-        }
-        */
-        
-        
-        fprintf(stderr, "reached here3\n");
         ssh_channel_open_session(sdata.channel); 
-        std::cout << "Opened Channel!?!" << std::endl;
-        std::cout << "OPENFD2" << std::endl;
 
+
+        logwarning("Starting New SSH Trapped Session...", true);
+
+        
         // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
         int fd = open(sshfifo.c_str(), O_RDWR);
 
         int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
+
+        int flags = fcntl(fd, F_GETFL, 0);
+        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
         
-        while (true) {
-            //std::cout << sshdatawaitingpipe.load() << std::endl;
-                
+        while (true) {                
 
             // READ DATA FROM PIPE
             char buf[10000] = "";
-            ssh_channel_read_nonblocking(sdata.channel, buf, 10000, false);
-            // ssh_channel_read_nonblocking();
+            int bytesssh = ssh_channel_read_nonblocking(sdata.channel, buf, 10000, false);
             std::string bufact = buf;
-            std::cout << "HI" << bufact << std::endl;
-            if (bufact != "") {
-                std::cout << "SAW THIS: " << bufact << std::endl;
+            if (bytesssh > 0) {
+                if (bufact.substr(0,bytesssh) != "") {
+                    std::cout << "SAW THIS: " << bufact << std::endl;
+                    write(cmdfifor, (bufact.substr(0,bytesssh)).c_str(), (bufact.substr(0,bytesssh)).length());
+                }
             }
-            sleep(1);
-
+            sleep(0.1);
 
 
             // SEND DATA OVER THE PIPE
-            
-            char whyyy[10000];
+            char whyyy[10000] = "";
             n = read(fd, whyyy, 10000);
+            
 
             std::string readfromfifo = whyyy + endline;
-            std::cout << "RECEIVED FROM FIFO: " << readfromfifo << std::endl;
-            if (readfromfifo != "") {
-                ssh_channel_write(sdata.channel, readfromfifo.c_str(), readfromfifo.length());
-                //ssh_channel_write(sdata.channel, endline.c_str(), endline.length());
+            if (n > 0) {
+                if (readfromfifo.substr(0,n) != "") {
+                    ssh_channel_write(sdata.channel, (readfromfifo.substr(0,n)).c_str(), (readfromfifo.substr(0,n)).length());
+                }
             }
-            
-            
-            
-            //sleep(1);  
         }
     } 
     
