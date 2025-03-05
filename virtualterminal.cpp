@@ -140,6 +140,7 @@ void virtualterminal(std::string command, int method) {
             }
             // sudo
             if (firstfour == "sudo") {
+                foundcommand = true;
                 std::cout << "SUDO RECEIVED" << std::endl;
             }
 
@@ -147,7 +148,10 @@ void virtualterminal(std::string command, int method) {
 
 
         // ***** u
+            // uname
+            if (firstfive == "uname") {
 
+            }
 
         // ***** v
 
@@ -166,16 +170,15 @@ void virtualterminal(std::string command, int method) {
 
 
 
+        ///////////////////
+        // TEMP NO FOUND //
+        ///////////////////
+        if (foundcommand != true) {
+            commandpost = "bash: " + command + ": command not found";
+        }
 
-        
-        //// NO COMMAND FOUND! EXECUTE AS NON-ROOT USER
+        write(writeback, commandpost.c_str(), commandpost.length());
     }
-
-    
-
-
-    write(writeback, command.c_str(), command.length());
-
     return;
 }
 
