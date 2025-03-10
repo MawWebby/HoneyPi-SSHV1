@@ -76,11 +76,15 @@ std::string sshterminals[255] = {};
 // SSH FIFO LOCATIONS
 std::string sshfifo = "/tmp/sshfifo";
 std::string cmdfifo = "/tmp/cmdfifo";
+std::string infifo = "/tmp/intofifo";
+std::atomic<int> numberofpasswordstried(0);
+std::atomic<int> numberofpassbackup(0);
+//std::atomic<int> numberofpasswordstofake(0);
+
 
 
 int sock, valread;
 struct sockaddr_in serv_addr;
-std::string hello = "Hello from client";
 char buffer[1024] = {0};
 
 
@@ -99,6 +103,35 @@ int minutesperhour = 60;
 int hoursperday = 24;
 
 bool calculatingtime = false;
+
+
+
+
+// A userdata struct for channel
+struct channel_data_struct {
+    /* pid of the child process the channel will spawn. */
+    pid_t pid;
+    /* For PTY allocation */
+    socket_t pty_master;
+    socket_t pty_slave;
+    /* For communication with the child process. */
+    socket_t child_stdin;
+    socket_t child_stdout;
+    /* Only used for subsystem and exec requests. */
+    socket_t child_stderr;
+    /* Event which is used to poll the above descriptors. */
+    ssh_event event;
+    /* Terminal size struct. */
+    struct winsize *winsize;
+};
+
+// A userdata struct for session
+struct session_data_struct {
+    /* Pointer to the channel the session will allocate. */
+    ssh_channel channel;
+    int auth_attempts;
+    int authenticated;
+};
 
 
 
@@ -155,51 +188,68 @@ std::string readtomainstring(int numbertoread) {
 
 
 
-//////////////////////////////////////
-//////////////////////////////////////
-//// WRITE FROM SSH THREAD SCRIPT //// 
-//////////////////////////////////////
-//////////////////////////////////////
-int writefromsshstring(std::string stringtoinsert, char* chartoinsert) {
-    bool completion22 = false;
-    int testers = 0;
 
-    if (stringtoinsert == "" && chartoinsert == "") {
-        logcritical("RECEIVED EMPTY INPUT STRING, NOT CONTINUING!", true);
-        return 1;
-    } else {
+////////////////////////////
+////////////////////////////
+//// INTERNAL FIFO PIPE //// 
+////////////////////////////
+////////////////////////////
+void internalFIFORead() {
+    int reader = open(infifo.c_str(), O_RDWR);
+    std::cout << "RUNNING INTERNAL FIFO" << std::endl;
 
-        // HELPER TO CONVERT CHAR TO STRING
-        if (chartoinsert != "") {
-            stringtoinsert = chartoinsert;
-            loginfo(stringtoinsert, true);
-        }
+    while (true) {
+        char buf[1000] = "";
+        int bytes = read(reader, buf, 1000);
+        std::cout << buf << std::endl;
+        std::cout << "RUNNING = true" << std::endl;
+        if (bytes >= 0) {
+            std::string buffer = buf;
+            std::string fullstring = buffer.substr(0,bytes);
+            std::cout << "RECEIVED ON INTERNAL FIFO:" << buffer << std::endl;
 
-        loginfo(stringtoinsert, true);
+            // CHECK FOR INTERNAL COMMAND SCHEME
+            if (fullstring.length() > 10) {
+                if (fullstring.substr(0, 9) == "INTERNAL:") {
+                    // TEST COMMAND 
+                    if (fullstring == "INTERNAL: CONTROLLER: YAY!") {
+                        std::cout << "REECEIVED TEST COMMAND OVER FIFO" << std::endl;
+                    }
 
-        while(completion22 == false) {
-            if (testers == 254) {
-                logcritical("LOG OVERFLOW ERROR!", true);
-                logcritical("MARKING AS ERROR AND ENDING SESSION!", true);
-                completion22 = true;
-                logvariableset = true;
-                return 1;
+                    
+                    // USER/PASS COMBO AND SEND TO HOST
+                    if (fullstring.length() > 20) {
+                        if (fullstring.substr(10,5) == "USER=") {
+                            // DECREASE PACKETS
+                            std::cout << "RECEIVED SSH LOGIN INTERNAL" << std::endl;
+                            numberofpasswordstried.fetch_add(1);
+                            numberofpassbackup.fetch_add(1);
+                            bool completed = false;
+                            int passwordbegins = fullstring.find("PASS=",15);
+                            std::string usercombo = fullstring.substr(15, passwordbegins - 15);
+                            std::string passcombo = fullstring.substr(passwordbegins + 5, fullstring.length() - passwordbegins - 5);
+                            compilepacket(usercombo, 0);
+                            compilepacket(passcombo, 33);
+
+                            std::cout << "<" << usercombo << "+" << passcombo << std::endl;
+                        }
+                    }
+
+
+
+                    // ADD OTHER INTERNAL COMMAND SCHEME HERE
+                }
             }
 
-            if (sshterminals[testers] == "") {
-                sshterminals[testers] = stringtoinsert;
-                completion22 = true;
-                logvariableset = true;
-                loginfo("Logged message", true);
-                logwarning(sshterminals[testers], true);
-                return 0;
-            } else {
-                testers = testers + 1;
-            }
         }
+        sleep(0.1);
+        // FIX THIS - 0.5?
     }
-    return 1;
+
+        close(reader);
+    return;
 }
+
 
 
 
@@ -229,33 +279,97 @@ int clearsshterminals() {
 
 
 
-/* A userdata struct for channel. */
-struct channel_data_struct {
-    /* pid of the child process the channel will spawn. */
-    pid_t pid;
-    /* For PTY allocation */
-    socket_t pty_master;
-    socket_t pty_slave;
-    /* For communication with the child process. */
-    socket_t child_stdin;
-    socket_t child_stdout;
-    /* Only used for subsystem and exec requests. */
-    socket_t child_stderr;
-    /* Event which is used to poll the above descriptors. */
+
+////////////////////////////////////////
+////////////////////////////////////////
+//// LOOPS FOR SSH TERMINAL STANDBY ////
+////////////////////////////////////////
+////////////////////////////////////////
+int sshterminalStart() {
+
+    // SSH STARTUP THINGS
+    ssh_bind sshbind;
+    ssh_session session;
     ssh_event event;
-    /* Terminal size struct. */
-    struct winsize *winsize;
-};
+    struct sigaction sa;
+    int rc;
+    int fd;
 
-/* A userdata struct for session. */
-struct session_data_struct {
-    /* Pointer to the channel the session will allocate. */
-    ssh_channel channel;
-    int auth_attempts;
-    int authenticated;
-};
+    rc = ssh_init();
+    if (rc < 0) {
+        fprintf(stderr, "ssh_init failed\n");
+        return 1;
+    }
+    //sleep(10);
 
+    std::cout << "ZAE" << std::endl;
 
+    sshbind = ssh_bind_new();
+    if (sshbind == NULL) {
+        fprintf(stderr, "ssh_bind_new failed\n");
+        return 1;
+    }
+
+    set_default_keys(sshbind, 0, 0, 0);
+
+    if(ssh_bind_listen(sshbind) < 0) {
+        fprintf(stderr, "%s\n", ssh_get_error(sshbind));
+        return 1;
+    }
+
+    // MAIN EXECUTION LOOP
+    while (true) {
+        // SETUP MAIN SSH FUNCTIONS
+        session = ssh_new();
+        if (session == NULL) {
+            fprintf(stderr, "Failed to allocate session\n");
+            continue;
+        }
+
+        /* Blocks until there is a new incoming connection. */
+        if(ssh_bind_accept(sshbind, session) != SSH_ERROR) {
+            switch(fork()) {
+                case 0:
+                    // Remove the SIGCHLD handler inherited from parent. 
+                    sa.sa_handler = SIG_DFL;
+                    sigaction(SIGCHLD, &sa, NULL);
+                    // Remove socket binding, which allows us to restart the
+                    // parent process, without terminating existing sessions. 
+                    ssh_bind_free(sshbind);
+
+                    // CONVERT INTO NONBLOCKING EVENT
+                    event = ssh_event_new();
+                    if (event != NULL) {
+                        /* Blocks until the SSH session ends by either
+                         * child process exiting, or client disconnecting. */
+                        handle_session(event, session);
+                        ssh_event_free(event);
+                    } else {
+                        fprintf(stderr, "Could not create polling context\n");
+                    }
+                    ssh_disconnect(session);
+                    ssh_free(session);
+
+                    exit(0);
+                case -1:
+                    fprintf(stderr, "Failed to fork\n");
+            }
+        } else {
+            fprintf(stderr, "%s\n", ssh_get_error(sshbind));
+        }
+        /* Since the session has been passed to a child fork, do some cleaning
+         * up at the parent process. */
+        ssh_disconnect(session);
+        ssh_free(session);
+    }
+
+    // FREE EVERYTHING AND CLOSE
+    ssh_bind_free(sshbind);
+    ssh_finalize();
+
+    // FIX THIS FOR CASE IF PROPER SHUTDOWN OR NOT
+    return 255;
+}
 
 
 
@@ -400,7 +514,7 @@ int setup(int argc, char **argv) {
     sendtolog("STARTING");
     
     // DELAY FOR SYSTEM TO START FURTHER
-    sleep(1.5);
+    sleep(1);
     if (debug == true) {
         int testing = system("./debug");
     } else {
@@ -413,7 +527,6 @@ int setup(int argc, char **argv) {
     signal(SIGTERM, handleSignal);
     signal(SIGINT, handleSignal);
     sendtolog("OK");
-    sleep(0.5);
     
 
 
@@ -450,6 +563,8 @@ int setup(int argc, char **argv) {
         return 1;
         return 1;
     }
+    
+
 
     // RANDOMIZING SYSTEM
     loginfo("Starting Random Installation...", false);
@@ -459,20 +574,11 @@ int setup(int argc, char **argv) {
 
 
     loginfo("Finishing SSH Guest V1 startup...", true);
-
-    /*
-    std::fstream rsakeys;
-    rsakeys.open("/etc/ssh/ssh_host_rsa_key");
-    if (rsakeys.is_open() == true) {
-        rsakeys.close();
-        loginfo("SSH RSA Keys Found!", true);        
-    } else {
-        loginfo("SSH RSA Keys Not Found!", true);
-        loginfo("Generating New Keys", true);
-        int generatekeys = system("ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' > nul: && ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' > nul: && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N '' > nul: ");
-        loginfo("Done Generating SSH Keys", true);
-    }
-*/
+    if (numberofpasswordstofake == 0) {
+        srand(time(0));
+        numberofpasswordstofake = rand() % 200 + 50; // % 2 + 2 ( % 100 + 100)
+    }   
+  
     loginfo("Removing Unneeded Dependencies!", true);
     int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
 
@@ -498,7 +604,8 @@ int setup(int argc, char **argv) {
     loginfo("Creating New FIFO Pipes...", false);
     int ramble = mkfifo(sshfifo.c_str(), 0666);
     int rugby = mkfifo(cmdfifo.c_str(), 0666);
-    if (ramble > 0 && rugby > 0) {
+    int golf = mkfifo(infifo.c_str(), 0666);
+    if (ramble > 0 && rugby > 0 && golf > 0) {
         sendtolog("ERROR");
         logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true);
         startupchecks = startupchecks + 1;
@@ -522,6 +629,12 @@ int setup(int argc, char **argv) {
 
 
 
+    // START INTERNAL FIFO PIPE
+    loginfo("Starting Internal Pipe...", false);
+    std::thread internalthread(internalFIFORead);
+    internalthread.detach();
+    sendtolog("Done");
+
 
     
     /////////////////////////////////////
@@ -532,9 +645,17 @@ int setup(int argc, char **argv) {
         std::thread adminConsole(interactiveTerminal);
         adminConsole.detach();
         sendtolog("Done");
+
+        loginfo("Starting SSH Thread...", false);
+        std::thread sshterminalstartthread(sshterminalStart);
+        sshterminalstartthread.detach();
+        sendtolog("Done");
+
     } else {
         logcritical("NOT STARTING ADMIN CONSOLE!", true);
     }
+
+
     
 
     return 0;
@@ -551,44 +672,8 @@ int setup(int argc, char **argv) {
 /////////////////////////////
 int main(int argc, char **argv) {
 
+    // STARTUP AND CHECKS
     int startupchecks = setup(argc, argv);
-
-
-
-    // SSH STARTUP THINGS
-    ssh_bind sshbind;
-    ssh_session session;
-    ssh_event event;
-    struct sigaction sa;
-    int rc;
-    int fd;
-
-    //FIFO
-    //mkfifo(sshfifo.c_str(), 0666);
-    //std::cout << "MADE PIPE1" << std::endl;
-    //sleep(10);
-
-    rc = ssh_init();
-    if (rc < 0) {
-        fprintf(stderr, "ssh_init failed\n");
-        return 1;
-    }
-    //sleep(10);
-
-    std::cout << "ZAE" << std::endl;
-
-    sshbind = ssh_bind_new();
-    if (sshbind == NULL) {
-        fprintf(stderr, "ssh_bind_new failed\n");
-        return 1;
-    }
-
-    set_default_keys(sshbind, 0, 0, 0);
-
-    if(ssh_bind_listen(sshbind) < 0) {
-        fprintf(stderr, "%s\n", ssh_get_error(sshbind));
-        return 1;
-    }
 
     // PING NETWORK TEST  
     int testing234 = pingnetwork();
@@ -603,77 +688,41 @@ int main(int argc, char **argv) {
     stopSIGNAL.store(0);
     updateSIGNAL.store(0);
     serverStarted.store(1);
-
+    int signaltimer = 14;
+    int signaltimermax = 15;
     
 
     while(serverstop == 0 && serverupdate == 0 && serverrunning == 1) {
 
-        // READ RUNNNING FLAGS
-        int serverstop = 0;
-        int serverupdate = 0;
-        int serverrunning = 1;
-
-        // SEND HEARTBEAT TO HOST
-        int pingheart = pinghost();
-        if (pingheart == 50) {
-            logcritical("AN ECEPTION OCCURRED THAT CAN NOT BE RECOVERED HAPPENED TRYING TO PING HOST!", true);
-            logcritical("KILLING!", true);
-            return 25;
-            return 25;
-            return 25;
-        } else if (pingheart == 1) {
-            logcritical("AN ERROR OCCURRED SEARCHING FOR HOST!", true);
-        }
-
-        // SETUP MAIN SSH FUNCTIONS
-        session = ssh_new();
-        if (session == NULL) {
-            fprintf(stderr, "Failed to allocate session\n");
-            continue;
-        }
-
-        /* Blocks until there is a new incoming connection. */
-        if(ssh_bind_accept(sshbind, session) != SSH_ERROR) {
-            switch(fork()) {
-                case 0:
-                    /* Remove the SIGCHLD handler inherited from parent. */
-                    sa.sa_handler = SIG_DFL;
-                    sigaction(SIGCHLD, &sa, NULL);
-                    /* Remove socket binding, which allows us to restart the
-                     * parent process, without terminating existing sessions. */
-                    ssh_bind_free(sshbind);
-
-                    // CONVERT INTO NONBLOCKING EVENT
-                    event = ssh_event_new();
-                    if (event != NULL) {
-                        /* Blocks until the SSH session ends by either
-                         * child process exiting, or client disconnecting. */
-                        handle_session(event, session);
-                        ssh_event_free(event);
-                    } else {
-                        fprintf(stderr, "Could not create polling context\n");
-                    }
-                    ssh_disconnect(session);
-                    ssh_free(session);
-
-                    exit(0);
-                case -1:
-                    fprintf(stderr, "Failed to fork\n");
+        // TIMER TO SEND HEARTBEAT TO HOST (15 SEC)
+        signaltimer = signaltimer + 1;
+        if (signaltimer >= signaltimermax) {
+            // SEND HEARTBEAT TO HOST
+            signaltimer = 0;
+            int pingheart = pinghost();
+            if (pingheart == 50) {
+                logcritical("AN ECEPTION OCCURRED THAT CAN NOT BE RECOVERED HAPPENED TRYING TO PING HOST!", true);
+                logcritical("KILLING!", true);
+                return 25;
+                return 25;
+                return 25;
+            } else if (pingheart == 1) {
+                logcritical("AN ERROR OCCURRED SEARCHING FOR HOST!", true);
             }
-        } else {
-            fprintf(stderr, "%s\n", ssh_get_error(sshbind));
         }
-        /* Since the session has been passed to a child fork, do some cleaning
-         * up at the parent process. */
-        ssh_disconnect(session);
-        ssh_free(session);
 
+        sleep(1);
+        
 
+        // READ RUNNNING FLAGS
+        int serverstop = stopSIGNAL.load();
+        int serverupdate = updateSIGNAL.load();
+        int serverrunning = serverStarted.load();
+
+        
+        //std::cout << "CORRECT NUMPACK:" << numberofpassbackup.load() << std::endl;
     }
 
-    // FREE EVERYTHING AND CLOSE
-    ssh_bind_free(sshbind);
-    ssh_finalize();
 
     // FIX THIS - ADD PROPER SHUTDOWN HERE IF NEEDED
     return 255;
