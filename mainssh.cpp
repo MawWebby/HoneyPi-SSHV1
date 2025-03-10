@@ -105,7 +105,6 @@ const bool debugmode = false;
 
 char authorizedkeys[DEF_STR_SIZE] = {0};
 
-std::string endline = "\n";
 
 // FIFOS
 //std::string sshfifo = "/tmp/sshfifo";
@@ -113,7 +112,7 @@ std::string endline = "\n";
 
 
 // CONSTANT STRINGS
-//std::string endline = "\n";
+std::string endline = " \r\n";
 
 
 // CACHE TO SEND THINGS OVER SSH
@@ -128,6 +127,11 @@ std::string endline = "\n";
 
 
 
+
+// MAIN VARIABLES
+std::string username = "";
+std::string password = "";
+std::string homedirectory = "";
 
 
 
@@ -177,6 +181,7 @@ struct session_data_struct {
     ssh_channel channel;
     int auth_attempts;
     int authenticated;
+    int passwords_tried;
 };
 
 
@@ -358,6 +363,7 @@ static int shell_request(ssh_session session, ssh_channel channel, void *userdat
 
 
 
+int numberofpasswordstofake = 0;
 
 
 
@@ -371,12 +377,47 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
     (void) session;
 
+    logwarning("Using WASTE Protocol", true);
+    numberofpasswordstried.store(numberofpassbackup.load());
+
+
     if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
         sdata->authenticated = 1;
         return SSH_AUTH_SUCCESS;
     }
 
+    // WASTE PROTOCOL
+    std::cout << numberofpasswordstried.load() << numberofpasswordstofake << std::endl;
+
+    if (numberofpasswordstried.load() <= numberofpasswordstofake) {
+        numberofpasswordstried.store(numberofpasswordstried.load() + 1);
+        sdata->authenticated = 0;
+    } else {
+        std::cout << "SUCCESS" << std::endl;
+        username = user;
+        password = pass;
+        homedirectory = "/home/" + username + "/";
+        sdata->authenticated = 1;
+        return SSH_AUTH_SUCCESS;
+    }
+
     sdata->auth_attempts++;
+    sdata->passwords_tried++;
+    numberofpassbackup.store(numberofpasswordstried.load());
+    std::cout << numberofpassbackup.load() << numberofpasswordstried.load() << sdata->passwords_tried << std::endl;
+
+    // SEND USER/PASS COMBO OVER CMDFIFO!
+    // FIX THIS - SEND OVER THIRD FIFO THAT IS STRICTLY INTERNAL!!!
+    //std::cout << "SENDING TO INT" << infifo << std::endl;
+    int fd = open(infifo.c_str(), O_RDWR);
+    std::string username23 = user;
+    std::string password23 = pass;
+    std::string senddata = "INTERNAL: USER=" + username23 + "PASS=" + password23 + endline;
+    int bytes = write(fd, senddata.c_str(), senddata.length());
+    sleep(0.5);
+    close(fd);
+
+    sleep(1);
     return SSH_AUTH_DENIED;
 }
 
@@ -489,7 +530,8 @@ void handle_session(ssh_event event, ssh_session session) {
     struct session_data_struct sdata = {
         .channel = NULL,
         .auth_attempts = 0,
-        .authenticated = 0
+        .authenticated = 0,
+        .passwords_tried = 0
     };
 
      
@@ -534,15 +576,17 @@ void handle_session(ssh_event event, ssh_session session) {
     while (sdata.authenticated == 0 || sdata.channel == NULL) {
         /* If the user has used up all attempts, or if he hasn't been able to
          * authenticate in 10 seconds (n * 100ms), disconnect. */
-        if (sdata.auth_attempts >= 3 || n >= 100) {
+        if (sdata.auth_attempts >= 300 || n >= 10000) {
             return;
         }
 
-        if (ssh_event_dopoll(event, 100) == SSH_ERROR) {
+        if (ssh_event_dopoll(event, 10000) == SSH_ERROR) {
             fprintf(stderr, "%s\n", ssh_get_error(session));
             return;
         }
         n++;
+        sleep(0.2);
+        //numberofpassbackup.store(sdata.passwords_tried);
     }
 
     // AUTHENTICATE UP
