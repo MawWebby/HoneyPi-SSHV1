@@ -55,6 +55,7 @@ extern std::string endline;
 #include "virtualterminal.h"
 #include "mainssh.h"
 
+
 // SERVER VERSION
 extern std::string honeyversion;
 
@@ -70,17 +71,18 @@ extern bool debug;
 // FIFOS
 extern std::string sshfifo;
 extern std::string cmdfifo;
+extern std::string infifo;
 
 
 // SSH VARIABLES
 extern char authorizedkeys[DEF_STR_SIZE];
-
+extern int numberofpasswordstofake;
+extern std::atomic<int> numberofpasswordstried;
+extern std::atomic<int> numberofpassbackup;
 
 
 // ERRORS LOGGED
 extern std::atomic<int> encounterederrors;
-
-
 
 
 // STRINGS TO MAIN SERVER
