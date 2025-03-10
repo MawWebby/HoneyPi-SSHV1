@@ -75,6 +75,7 @@ void level0access() {
     std::cout << "login       | (NO ARGS) | Login with Higher User" << std::endl;
     std::cout << "logout      | (NO ARGS) | Log Out of Console" << std::endl;
     std::cout << "clear       | (NO ARGS) | Clear the Terminal" << std::endl;
+    std::cout << "testfifo    | (NO ARGS) | Test the Internal FIFO Communication of Docker" << std::endl;
 }
 
 
@@ -185,6 +186,22 @@ void processCommand(const std::string& command) {
             std::cout << "Sorry, you do not have permissions to perform this action." << std::endl;
         }
         foundcommand = true;
+    }
+
+    // TEST INTERNAL
+    if (command == "testfifo") {
+        if (useraccesslevel >= 0) {
+            std::cout << "RUNNING COMMAND" << std::endl;
+            int filedescript = open(infifo.c_str(), O_WRONLY);
+            std::cout << "OPENED" << std::endl;
+            std::string controller = "INTERNAL: CONTROLLER: YAY!";
+            write(filedescript, controller.c_str(), controller. length());
+            std::cout << "WROTE" << std::endl;
+            close(filedescript);
+            std::cout << "SENT" << std::endl;
+        } else {
+            std::cout << "Sorry, you do not have permissions to perform this action." << std::endl;
+        }
     }
 
     // OPEN AND READ LOG FILES
