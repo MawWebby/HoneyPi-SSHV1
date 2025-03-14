@@ -132,7 +132,7 @@ std::string endline = " \r\n";
 std::string username = "";
 std::string password = "";
 std::string homedirectory = "";
-
+std::atomic<char>currentuserssh[500];
 
 
 
@@ -383,6 +383,42 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
     if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
         sdata->authenticated = 1;
+
+        char userbuffer[1000];
+        int numbertimes = 0;
+        bool completed = false;
+        strcpy(userbuffer, user);
+        while(numbertimes < 1000 && completed == false) {
+            std::cout << numbertimes << userbuffer[numbertimes] << std::endl;
+            if (userbuffer[numbertimes] == NULL) {
+                (currentuserssh[numbertimes]).store(userbuffer[numbertimes]);
+            }
+            numbertimes = numbertimes + 1;
+        }
+
+        //userbuffer[0] = user[1];
+        (currentuserssh[0]).store(userbuffer[0]);
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "CURRENTUSER:" << userbuffer << "[]" << std::endl;
+        std::cout << "HI" << std::endl;
+        std::cout << "HI" << std::endl;
+        bool debugpool = false;
+        int times = 0;
+        while (debugpool == false) {
+            if (times > 1000 || currentuserssh[times].load() == NULL) {
+                debugpool = true;
+            }
+            std::cout << currentuserssh[times].load() << std::endl;
+            times = times + 1;
+        }
+
+
+
         return SSH_AUTH_SUCCESS;
     }
 
@@ -414,6 +450,19 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     std::string password23 = pass;
     std::string senddata = "INTERNAL: USER=" + username23 + "PASS=" + password23 + endline;
     int bytes = write(fd, senddata.c_str(), senddata.length());
+    
+    /*
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "CURRENTUSER:" << *userbuffer << std::endl;
+    std::cout << "HI" << std::endl;
+    std::cout << "HI" << std::endl;
+    // .store(username23.c_str())
+    */
     sleep(0.5);
     close(fd);
 
@@ -572,6 +621,7 @@ void handle_session(ssh_event event, ssh_session session) {
 
     ssh_event_add_session(event, session);
 
+    bool runningmainssh = true;
     n = 0;
     while (sdata.authenticated == 0 || sdata.channel == NULL) {
         /* If the user has used up all attempts, or if he hasn't been able to
@@ -631,8 +681,8 @@ void handle_session(ssh_event event, ssh_session session) {
 
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-        
-        while (true) {                
+
+        while (runningmainssh == true) {                
 
             // READ DATA FROM PIPE
             char buf[10000] = "";
@@ -653,8 +703,30 @@ void handle_session(ssh_event event, ssh_session session) {
             
 
             std::string readfromfifo = whyyy + endline;
+            bool internal = false;
             if (n > 0) {
-                if (readfromfifo.substr(0,n) != "") {
+                if (n > 9) {
+                    if (readfromfifo.substr(0,9) == "INTERNAL:") {
+                        internal = true;
+                        std::cout << "INTERNAL COMMAND" << readfromfifo << readfromfifo.length() << std::endl;
+                        if(readfromfifo.length() >= 16) {
+                            if (readfromfifo.substr(0,16) == "INTERNAL: LOGOUT") {
+                                runningmainssh = false;  
+                                std::string returnstatement = "\n\r";
+                                ssh_channel_write(sdata.channel, returnstatement.c_str(), returnstatement.length());
+                            }
+                        }
+
+                        // MORE INTERNAL COMMANDS HERE IF NECESSARY!!!
+                        
+                    } else {
+                        internal = false;
+                    }
+                } else {
+                    internal = false;
+                }
+
+                if (readfromfifo.substr(0,n) != "" && internal == false) {
                     ssh_channel_write(sdata.channel, (readfromfifo.substr(0,n)).c_str(), (readfromfifo.substr(0,n)).length());
                 }
             }
@@ -663,7 +735,7 @@ void handle_session(ssh_event event, ssh_session session) {
     
     
     // WAIT STATE
-    while(ssh_channel_is_open(sdata.channel) && (cdata.pid == 0 || waitpid(cdata.pid, &rc, WNOHANG) == 0));
+    while(ssh_channel_is_open(sdata.channel) && (cdata.pid == 0 || waitpid(cdata.pid, &rc, WNOHANG) == 0) && runningmainssh == true);
 
     close(cdata.pty_master);
     close(cdata.child_stdin);
