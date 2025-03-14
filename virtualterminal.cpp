@@ -118,7 +118,11 @@ void virtualterminal(std::string command, int method) {
             // ls
             
             // logout
-            
+            if (command == "logout") {
+                std::cout << "CALLED TO EXIT" << std::endl;
+                commandpost = "INTERNAL: LOGOUT";
+                foundcommand = true;
+            }
 
         // ***** m
             // mkdir
@@ -141,12 +145,19 @@ void virtualterminal(std::string command, int method) {
         // ***** s
             // ssh
             if (firstthree == "ssh") {
+                if (firstfive != "") {
+                    // INITIATE COMMAND AS IF SOMETHING IS ACTUALLY SUPPOSED TO HAPPEN
+                }
+                sleep(2);
 
             }
             // sudo
             if (firstfour == "sudo") {
                 foundcommand = true;
                 std::cout << "SUDO RECEIVED" << std::endl;
+                if (firstsix == "sudo -s") {
+                    
+                }
             }
 
         // ***** t
@@ -203,8 +214,10 @@ void readback() {
     int writeback = open(sshfifo.c_str(), O_WRONLY);
     showinput = true;
 
-
-    std::string userprompt = "\npi@server:~/ $ ";
+    //char usertype = (*currentuserssh).load();
+    //std::string userlogintype(100, usertype);
+    std::string userlogintype = "myuser";
+    std::string userprompt = "\n" + userlogintype + "@server:~/ $ ";
     // FIX THIS TO ACCURATELY PORTRAY INFORMATION ALONG WITH TERMINAL AND BRUTE FORCE SSH
 
     // FOREVER LOOP TO HAVE CONSTANT READER
@@ -264,7 +277,10 @@ void sshwriter() {
     int cached = 0;
 
     // userprompt fix this
-    std::string userprompt = "pi@server:~/ $ ";
+    //char usertype = (*currentuserssh).load();
+    //std::string userlogintype(1, usertype);
+    std::string userlogintype = "myuser";
+    std::string userprompt = userlogintype + "@server:~/ $ ";
     // FIX THIS TO ACCURATELY PORTRAY INFORMATION ALONG WITH TERMINAL AND BRUTE FORCE SSH
 
     
