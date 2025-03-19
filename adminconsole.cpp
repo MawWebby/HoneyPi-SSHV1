@@ -330,6 +330,16 @@ void processCommand(const std::string& command) {
         foundcommand = true;
     }
 
+    if (command == "bash") {
+        if (useraccesslevel >= 1) {
+            std::cout << "Sending to Bash..." << std::endl;
+            system("bash");
+        } else {
+            std::cout << "Sorry, you do not have permissions to perform this action." << std::endl;
+        }
+        foundcommand = true;
+    }
+
 
 
     // MAKE SURE THE COMMAND IS FOUND
