@@ -380,46 +380,30 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     logwarning("Using WASTE Protocol", true);
     numberofpasswordstried.store(numberofpassbackup.load());
 
+    // STRING CHECK FOR LENGTH?
 
     if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
-        sdata->authenticated = 1;
 
-        char userbuffer[1000];
-        int numbertimes = 0;
-        bool completed = false;
-        strcpy(userbuffer, user);
-        while(numbertimes < 1000 && completed == false) {
-            std::cout << numbertimes << userbuffer[numbertimes] << std::endl;
-            if (userbuffer[numbertimes] == NULL) {
-                (currentuserssh[numbertimes]).store(userbuffer[numbertimes]);
-            }
-            numbertimes = numbertimes + 1;
+        // WRITE EVERYTHING HERE TO FIFOS
+        username = user;
+        password = pass;
+        int usernamepipe = open(usefifo.c_str(), O_WRONLY);
+        int passwordpipe = open(pwdfifo.c_str(), O_WRONLY);
+        int writeuserstatus = write(usernamepipe, username.c_str(), username.length());
+        int writepassstatus = write(passwordpipe, password.c_str(), password.length());
+        close(usernamepipe);
+        close(passwordpipe);
+        if (writeuserstatus < 1 || writepassstatus == -1) {
+            std::cout << "WROTE USER " << writeuserstatus << " into " << username << ":)" << std::endl;
+            std::cout << "WROTE PASS " << writepassstatus << " into " << password << ":)" << std::endl;
+            logcritical("FIFO ERROR OCCURRED!", true);
+            sdata->authenticated = 0;
+            return SSH_AUTH_DENIED;
+        } else {
+            std::cout << "WROTE " << writeuserstatus << " into " << username << ":)" << std::endl;
+            sdata->authenticated = 1;
+            return SSH_AUTH_SUCCESS;
         }
-
-        //userbuffer[0] = user[1];
-        (currentuserssh[0]).store(userbuffer[0]);
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "CURRENTUSER:" << userbuffer << "[]" << std::endl;
-        std::cout << "HI" << std::endl;
-        std::cout << "HI" << std::endl;
-        bool debugpool = false;
-        int times = 0;
-        while (debugpool == false) {
-            if (times > 1000 || currentuserssh[times].load() == NULL) {
-                debugpool = true;
-            }
-            std::cout << currentuserssh[times].load() << std::endl;
-            times = times + 1;
-        }
-
-
-
-        return SSH_AUTH_SUCCESS;
     }
 
     // WASTE PROTOCOL
@@ -433,8 +417,23 @@ static int auth_password(ssh_session session, const char *user, const char *pass
         username = user;
         password = pass;
         homedirectory = "/home/" + username + "/";
-        sdata->authenticated = 1;
-        return SSH_AUTH_SUCCESS;
+
+        // WRITE EVERYTHING HERE TO FIFOS
+        int usernamepipe = open(usefifo.c_str(), O_WRONLY);
+        int passwordpipe = open(pwdfifo.c_str(), O_WRONLY);
+        int writeuserstatus = write(usernamepipe, username.c_str(), username.length());
+        int writepassstatus = write(passwordpipe, password.c_str(), password.length());
+        close(usernamepipe);
+        close(passwordpipe);
+        if (writeuserstatus < 1 || writepassstatus == -1) {
+            logcritical("FIFO ERROR OCCURRED!", true);
+            sdata->authenticated = 0;
+            return SSH_AUTH_DENIED;
+        } else {
+            std::cout << "WROTE " << writeuserstatus << " into " << username << ":)" << std::endl;
+            sdata->authenticated = 1;
+            return SSH_AUTH_SUCCESS;
+        }
     }
 
     sdata->auth_attempts++;
@@ -451,18 +450,6 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     std::string senddata = "INTERNAL: USER=" + username23 + "PASS=" + password23 + endline;
     int bytes = write(fd, senddata.c_str(), senddata.length());
     
-    /*
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "CURRENTUSER:" << *userbuffer << std::endl;
-    std::cout << "HI" << std::endl;
-    std::cout << "HI" << std::endl;
-    // .store(username23.c_str())
-    */
     sleep(0.5);
     close(fd);
 
@@ -488,7 +475,7 @@ static int auth_publickey(ssh_session session, const char *user, struct ssh_key_
     (void) session;
 
     if (signature_state == SSH_PUBLICKEY_STATE_NONE) {
-        return SSH_AUTH_SUCCESS;
+        return SSH_AUTH_DENIED;
     }
 
     if (signature_state != SSH_PUBLICKEY_STATE_VALID) {
@@ -512,7 +499,7 @@ static int auth_publickey(ssh_session session, const char *user, struct ssh_key_
                 ssh_key_free(key);
                 if (result == 0) {
                     sdata->authenticated = 1;
-                    return SSH_AUTH_SUCCESS;
+                    return SSH_AUTH_DENIED;
                 }
             }
         }
