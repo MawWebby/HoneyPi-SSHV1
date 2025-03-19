@@ -1,11 +1,11 @@
-# Image
+##### Image
 FROM debian:latest
 
-# Add Needed Linux Repos
+##### Add Needed Linux Repos
 #RUN wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/sublimehq-archive.gpg > /dev/null
 #RUN echo "deb https://download.sublimetext.com/ apt/stable/" | tee /etc/apt/sources.list.d/sublime-text.list
 
-# Install Needed Packages
+##### Install Needed Packages
 RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y sudo
@@ -14,46 +14,58 @@ RUN apt-get install -y iputils-ping curl bash cron
 RUN apt-get install -y apt-utils dialog
 RUN apt-get install -y openssh-client openssh-server
 RUN apt-get install -y g++
+RUN apt-get install -y libvte-dev
 
-# Remove Standard SSH Keys
-RUN rm -f /etc/ssh/ssh_host_rsa_key
-RUN rm -f /etc/ssh/ssh_host_ecdsa_key
-RUN rm -f /etc/ssh/ssh_host_ed25519_key
+##### Remove Standard SSH Keys
+#RUN rm -f /etc/ssh/ssh_host_rsa_key
+#RUN rm -f /etc/ssh/ssh_host_ecdsa_key
+#RUN rm -f /etc/ssh/ssh_host_ed25519_key
 
-# Set Files and Working Directory
+##### Set Files and Working Directory
 COPY . /usr/src/honeypi
 WORKDIR /usr/src/honeypi
 
-# Compile C++ Code
-RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp authtoken.cpp -lssh
-RUN g++ -o beta beta.cpp -lssh
 
-# Remove Unneeded Dependencies
-RUN apt-get remove -y g++
-RUN apt-get autoremove -y
 
-# REMOVE FILES
-RUN mv randomize /usr/src/randomize
-RUN mv run /usr/src/run
-RUN mv beta /usr/src/beta
-RUN rm /usr/src/honeypi/*
-RUN mv /usr/src/randomize /usr/src/honeypi/randomize
-RUN mv /usr/src/run /usr/src/honeypi/run
-RUN mv /usr/src/beta /usr/src/honeypi/beta
+##### Compile C++ Code
 
-# MKDIR FOR LOG FILES
+# MAIN FILES TO COMPILE
+#RUN g++ -o randomize randomize.cpp
+RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp authtoken.cpp mainssh.cpp virtualterminal.cpp -lssh
+#RUN g++ -o beta beta.cpp -lssh
+
+# TEST FILES TO COMPILE
+#RUN g++ -o beta tests/FIFOPipeExample.cpp
+
+
+##### Remove Unneeded Dependencies
+#RUN apt-get remove -y g++
+#RUN apt-get autoremove -y
+
+##### REMOVE FILES
+#RUN mv randomize /usr/src/randomize
+#RUN mv run /usr/src/run
+#RUN mv beta /usr/src/beta
+#RUN rm /usr/src/honeypi/*
+#RUN mv /usr/src/randomize /usr/src/honeypi/randomize
+#RUN mv /usr/src/run /usr/src/honeypi/run
+#RUN mv /usr/src/beta /usr/src/honeypi/beta
+
+##### MKDIR FOR LOG FILES
 RUN mkdir /var/rund
 RUN touch /var/rund/log.txt
 
-# Expose the SSH port
+##### Expose the SSH port
 EXPOSE 22
 
-# Start Application Command
+##### Start Application Command
 ENTRYPOINT ["./run"]
 
-# Branch and Version Stuff
-LABEL Name=honeypotpi Version=0.2.0
+##### Entrypoint for Beta if Testing
+#ENTRYPOINT ["./beta"]
+
+##### Branch and Version Stuff
+LABEL Name=honeypi-guestssh Version=0.5.0
 
 
 
