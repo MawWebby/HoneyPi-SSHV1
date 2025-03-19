@@ -72,6 +72,11 @@ extern bool debug;
 extern std::string sshfifo;
 extern std::string cmdfifo;
 extern std::string infifo;
+extern std::string usefifo;
+extern std::string pwdfifo;
+extern std::string bshfifo;
+extern std::string sudopassword;
+extern std::string homedirfifo;
 
 
 // SSH VARIABLES
