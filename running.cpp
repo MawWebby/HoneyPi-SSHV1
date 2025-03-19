@@ -11,31 +11,6 @@ std::string honeyversion = "0.4.0";
 
 
 
-////////////////////////////////////
-////////////////////////////////////
-//// DEPENDENCIES / DEFINITIONS ////
-////////////////////////////////////
-////////////////////////////////////
-
-/*
-#define ssh_channel_callbacks_struct {
-    .userdata = 0,
-    .channel_pty_request_function = 0,
-    .channel_pty_window_change_function = 0,
-    .channel_shell_request_function = 0,
-    .channel_exec_request_function = 0,
-    .channel_data_function = 0,
-    .channel_subsystem_request_function = 0
-}
-*/
-
-
-
-
-
-
-
-
 
 ///////////////////
 //// VARIABLES ////
@@ -77,6 +52,13 @@ std::string sshterminals[255] = {};
 std::string sshfifo = "/tmp/sshfifo";
 std::string cmdfifo = "/tmp/cmdfifo";
 std::string infifo = "/tmp/intofifo";
+std::string usefifo = "/tmp/fifo5.txt";
+std::string pwdfifo = "/tmp/fifo4.txt";
+std::string bshfifo = "/tmp/fifo6";
+std::string sudopassword = "/tmp/fifo7";
+std::string homedirfifo = "/tmp/fifo8";
+std::string usetouchfifo = "touch " + usefifo;
+std::string pwdtouchfifo = "touch " + pwdfifo;
 std::atomic<int> numberofpasswordstried(0);
 std::atomic<int> numberofpassbackup(0);
 //std::atomic<int> numberofpasswordstofake(0);
@@ -196,7 +178,6 @@ std::string readtomainstring(int numbertoread) {
 ////////////////////////////
 void internalFIFORead() {
     int reader = open(infifo.c_str(), O_RDWR);
-    std::cout << "RUNNING INTERNAL FIFO" << std::endl;
 
     while (true) {
         char buf[1000] = "";
@@ -605,7 +586,11 @@ int setup(int argc, char **argv) {
     int ramble = mkfifo(sshfifo.c_str(), 0666);
     int rugby = mkfifo(cmdfifo.c_str(), 0666);
     int golf = mkfifo(infifo.c_str(), 0666);
-    if (ramble > 0 && rugby > 0 && golf > 0) {
+    int ninetynine = system(usetouchfifo.c_str());       //system(usetouchfifo.c_str());     //mkfifo(usefifo.c_str(), 0666);
+    int onethirtyseven = system(pwdtouchfifo.c_str()); //mkfifo(pwdfifo.c_str(), 0666);
+    int bush = mkfifo(bshfifo.c_str(), 0666);
+    int home = mkfifo(homedirfifo.c_str(), 0666);
+    if (ramble > 0 && rugby > 0 && golf > 0 && ninetynine > 0 && bush > 0 && onethirtyseven > 0) {
         sendtolog("ERROR");
         logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true);
         startupchecks = startupchecks + 1;
@@ -613,7 +598,7 @@ int setup(int argc, char **argv) {
         sendtolog("DONE");
     }
 
-
+    
     // CREATE THREAD FOR NEW FIFO READER
     loginfo("Creating New FIFO Reader...", false);
     std::thread readbackthread(readback);
@@ -627,7 +612,8 @@ int setup(int argc, char **argv) {
     sshterm.detach();
     sendtolog("DONE");
 
-
+    
+   
 
     // START INTERNAL FIFO PIPE
     loginfo("Starting Internal Pipe...", false);
