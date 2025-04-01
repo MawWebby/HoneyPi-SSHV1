@@ -49,6 +49,7 @@ const bool debugmode = false;
 
 #include <libssh/callbacks.h>
 #include <libssh/server.h>
+#include <libssh/libssh.h>
 
 #include <poll.h>
 #ifdef HAVE_ARGP_H
@@ -75,11 +76,7 @@ const bool debugmode = false;
 #include <stdio.h>
 
 #ifndef KEYS_FOLDER
-#ifdef _WIN32
-#define KEYS_FOLDER
-#else
 #define KEYS_FOLDER "/etc/ssh/"
-#endif
 #endif
 
 #define USER "myuser"
@@ -215,6 +212,29 @@ static int data_function(ssh_session session, ssh_channel channel, void *data, u
 
     close(cmdfifor);
     return n;
+}
+
+
+
+
+
+///////////////////////////////////////////////
+//// GET THE CLIENT IP FROM THE SSH SERVER //// 
+///////////////////////////////////////////////
+std::string ssh_get_client_ip(ssh_session session) {
+
+    struct sockaddr_storage tmp;
+    struct sockaddr_in *sock;
+    unsigned int len = 100;
+    char ip[100] = "\0";
+
+    getpeername(ssh_get_fd(session), (struct sockaddr*)&tmp, &len);
+    sock = (struct sockaddr_in *)&tmp;
+    inet_ntop(AF_INET, &sock->sin_addr, ip, len);
+
+    std::string ip_str = ip;
+
+    return ip_str;
 }
 
 
@@ -380,8 +400,7 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     logwarning("Using WASTE Protocol", true);
     numberofpasswordstried.store(numberofpassbackup.load());
 
-    // STRING CHECK FOR LENGTH?
-
+    // DEBUGGING
     if (strcmp(user, USER) == 0 && strcmp(pass, PASS) == 0) {
 
         // WRITE EVERYTHING HERE TO FIFOS
@@ -408,33 +427,52 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
     // WASTE PROTOCOL
     std::cout << numberofpasswordstried.load() << numberofpasswordstofake << std::endl;
+    int readable = open(usefifo.c_str(), O_RDONLY);
+    char pastuser[1000];
+    int readers = read(readable, pastuser, 1000);
+    close(readable);
 
-    if (numberofpasswordstried.load() <= numberofpasswordstofake) {
-        numberofpasswordstried.store(numberofpasswordstried.load() + 1);
-        sdata->authenticated = 0;
-    } else {
-        std::cout << "SUCCESS" << std::endl;
-        username = user;
-        password = pass;
-        homedirectory = "/home/" + username + "/";
-
-        // WRITE EVERYTHING HERE TO FIFOS
-        int usernamepipe = open(usefifo.c_str(), O_WRONLY);
-        int passwordpipe = open(pwdfifo.c_str(), O_WRONLY);
-        int writeuserstatus = write(usernamepipe, username.c_str(), username.length());
-        int writepassstatus = write(passwordpipe, password.c_str(), password.length());
-        close(usernamepipe);
-        close(passwordpipe);
-        if (writeuserstatus < 1 || writepassstatus == -1) {
-            logcritical("FIFO ERROR OCCURRED!", true);
+    if (readers == 0) {
+        if (numberofpasswordstried.load() <= numberofpasswordstofake) {
+            numberofpasswordstried.store(numberofpasswordstried.load() + 1);
             sdata->authenticated = 0;
-            return SSH_AUTH_DENIED;
         } else {
-            std::cout << "WROTE " << writeuserstatus << " into " << username << ":)" << std::endl;
-            sdata->authenticated = 1;
-            return SSH_AUTH_SUCCESS;
+            std::cout << "SUCCESS" << std::endl;
+            username = user;
+            password = pass;
+            homedirectory = "/home/" + username + "/";
+    
+            // WRITE EVERYTHING HERE TO FIFOS
+            int usernamepipe = open(usefifo.c_str(), O_WRONLY);
+            int passwordpipe = open(pwdfifo.c_str(), O_WRONLY);
+            int writeuserstatus = write(usernamepipe, username.c_str(), username.length());
+            int writepassstatus = write(passwordpipe, password.c_str(), password.length());
+            close(usernamepipe);
+            close(passwordpipe);
+            if (writeuserstatus < 1 || writepassstatus == -1) {
+                logcritical("FIFO ERROR OCCURRED!", true);
+                sdata->authenticated = 0;
+                return SSH_AUTH_DENIED;
+            } else {
+                std::cout << "WROTE " << writeuserstatus << " into " << username << ":)" << std::endl;
+                sdata->authenticated = 1;
+                return SSH_AUTH_SUCCESS;
+            }
+        }
+    } else {
+        std::string properuser = pastuser;
+        char pastpass[1000];
+        int readnow = open(pwdfifo.c_str(), O_RDONLY);
+        int readering = read(readnow, pastpass, 1000);
+        close(readnow);
+        if (readering != 0) {
+            if (strcmp(user, pastuser) == 0 && strcmp(pass, pastpass) == 0) {
+                sdata->authenticated = 1;
+                return SSH_AUTH_SUCCESS;
+            }
         }
     }
+    
 
     sdata->auth_attempts++;
     sdata->passwords_tried++;
@@ -600,6 +638,14 @@ void handle_session(ssh_event event, ssh_session session) {
 
     ssh_set_server_callbacks(session, &server_cb);
 
+    
+
+    // GET CLIENT IP ADDRESS TO SEND TO MAIN
+    std::string ipaddr = ssh_get_client_ip(session);
+    if (ipaddr != "") {
+        compilepacket(ipaddr, 5);
+    }
+
 
     if (ssh_handle_key_exchange(session) != SSH_OK) {
         fprintf(stderr, "%s\n", ssh_get_error(session));
@@ -663,12 +709,26 @@ void handle_session(ssh_event event, ssh_session session) {
         
         // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
         int fd = open(sshfifo.c_str(), O_RDWR);
-
         int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
-
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
+
+
+
+        // INITIAL CONFIGURATION OPTIONS
+        time_t time10 = time(0); 
+        std::string dateandtime = ctime(&time10);
+        std::string hellomessage = "Linux Server 6.6.74+rpt-rpi-v7 #1 SMP Raspbian 1:6.6.74-1+rpt1 (2025-01-27) armv7l\r\n\r\nThe programs included with the Debian GNU/Linux system are free software;\r\nthe exact distribution terms for each program are described in the\r\nindividual files in /usr/share/doc/*/copyright.\r\n\r\nDebian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent\r\npermitted by applicable law. Last login: " + dateandtime.substr(0, dateandtime.length() - 1) + " from " + ssh_get_client_ip(session);
+        sleep(2.5);
+        ssh_channel_write(sdata.channel, hellomessage.c_str(), hellomessage.length());
+        sleep(3);
+        std::string userprompt = userfunction();
+        ssh_channel_write(sdata.channel, userprompt.c_str(), userprompt.length());
+
+
+
+        // MAIN SSH RUNNING LOOP
         while (runningmainssh == true) {                
 
             // READ DATA FROM PIPE
