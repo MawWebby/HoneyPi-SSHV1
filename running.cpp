@@ -281,9 +281,6 @@ int sshterminalStart() {
         fprintf(stderr, "ssh_init failed\n");
         return 1;
     }
-    //sleep(10);
-
-    std::cout << "ZAE" << std::endl;
 
     sshbind = ssh_bind_new();
     if (sshbind == NULL) {
@@ -311,18 +308,17 @@ int sshterminalStart() {
         if(ssh_bind_accept(sshbind, session) != SSH_ERROR) {
             switch(fork()) {
                 case 0:
-                    // Remove the SIGCHLD handler inherited from parent. 
+                    //ssh_get_openssh_version();
+                    //ssh_get_pubkey();
+                    //ssh_get_publickey();
+                    //ssh_get_version();
+                    
+
                     sa.sa_handler = SIG_DFL;
                     sigaction(SIGCHLD, &sa, NULL);
-                    // Remove socket binding, which allows us to restart the
-                    // parent process, without terminating existing sessions. 
                     ssh_bind_free(sshbind);
-
-                    // CONVERT INTO NONBLOCKING EVENT
                     event = ssh_event_new();
                     if (event != NULL) {
-                        /* Blocks until the SSH session ends by either
-                         * child process exiting, or client disconnecting. */
                         handle_session(event, session);
                         ssh_event_free(event);
                     } else {
@@ -603,13 +599,6 @@ int setup(int argc, char **argv) {
     loginfo("Creating New FIFO Reader...", false);
     std::thread readbackthread(readback);
     readbackthread.detach();
-    sendtolog("DONE");
-
-
-    // CREATE SSH THREAD WRITER
-    loginfo("Creating New FIFO Writer...", false);
-    std::thread sshterm(sshwriter);
-    sshterm.detach();
     sendtolog("DONE");
 
     
