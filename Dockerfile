@@ -16,6 +16,10 @@ RUN apt-get install -y openssh-client openssh-server
 RUN apt-get install -y g++
 RUN apt-get install -y libvte-dev
 
+##### Install Many New Packages that were Not Originally Included?
+RUN apt-get install -y nano
+
+
 ##### Remove Standard SSH Keys
 #RUN rm -f /etc/ssh/ssh_host_rsa_key
 #RUN rm -f /etc/ssh/ssh_host_ecdsa_key
