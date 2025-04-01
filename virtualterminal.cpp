@@ -49,7 +49,7 @@ std::string userfunction() {
         userlogintype = bufuser;
     }
 
-    std::string userprompt = "\n" + userlogintype + "@server:~/ $ ";
+    std::string userprompt = "\n\r" + userlogintype + "@server:~/ $ ";
     return userprompt;
 }
 
@@ -69,7 +69,8 @@ void virtualterminal(std::string command, int method) {
     std::string commandpost = "";
     bool foundcommand = false;
     bool validflags = true;
-    bool sendtobash = false;
+    bool sendtobash = true;
+    bool interactivecommand = false;
 
 
     // MAIN EXECUTION OF DIFFERENT FAKE COMMANDS
@@ -109,7 +110,7 @@ void virtualterminal(std::string command, int method) {
 
         // START GOING THROUGH ALL DIFFERENT CASES TO FIND OUT WHICH COMMAND IT REALLY IS
         // ***** a
-
+        
 
         // ***** b
 
@@ -153,6 +154,7 @@ void virtualterminal(std::string command, int method) {
                 std::cout << "CALLED TO EXIT" << std::endl;
                 commandpost = "INTERNAL: LOGOUT";
                 foundcommand = true;
+                sendtobash = false;
             }
 
         // ***** m
@@ -160,6 +162,11 @@ void virtualterminal(std::string command, int method) {
 
         // ***** n
             // nano
+            if (command == "nano") {
+                std::cout << "NANO CALLED (INTERACTIVE)" << std::endl;
+                sendtobash = true;
+                interactivecommand = true;
+            }
 
         // ***** o
 
@@ -185,6 +192,7 @@ void virtualterminal(std::string command, int method) {
             // sudo
             if (firstfour == "sudo") {
                 foundcommand = true;
+                sendtobash = false;
                 std::cout << "SUDO RECEIVED" << std::endl;
                 if (firstsix == "sudo -s") {
                     
@@ -200,6 +208,7 @@ void virtualterminal(std::string command, int method) {
                 if (command.length() == 5) {
                     commandpost = "Linux";
                     foundcommand = true;
+                    sendtobash = false;
                 } else {
                     sendtobash = true;
                 }
@@ -228,8 +237,43 @@ void virtualterminal(std::string command, int method) {
         if (foundcommand != true && sendtobash == false) {
             commandpost = "\r\n-bash: " + command + ": command not found\r";
         } else if (sendtobash == true && foundcommand != true) {
-            std::string sendcommandtohost = command + "> /tmp/sshfifo";
-            int returnvalue = system(sendcommandtohost.c_str());
+            std::string sendcommandtohost = command + " > /tmp/sshfifo";
+            int returnvalue;
+            if (interactivecommand == false) {
+                returnvalue = system(sendcommandtohost.c_str());
+            } else {
+                // MAIN PID AND DUP PIPES FOR SYSTEM CALLS
+                pid_t pid = 0;
+                int inpipefd[2];
+                int outpipefd[2];
+                char buf[1024];
+                char msg[1024];
+                int status;
+
+                // SUCCESS
+                int successful = pipe(inpipefd);
+                successful = successful + pipe(outpipefd);
+                pid = fork();
+
+                if (pid == 0 && successful == 0) {
+                    int inputs = open(cmdfifo.c_str(), O_RDWR);
+
+                    int duplicator2 = dup2(writeback, STDIN_FILENO);
+                    duplicator2 = duplicator2 + dup2(inputs, STDOUT_FILENO);
+
+                    close(outpipefd[1]);
+                    close(inpipefd[0]);
+
+                    execl("/home/pi", command.c_str(), (char*) NULL);
+
+
+                    exit(1);
+                } else {
+                    std::cout << "AN ERROR OCCURRED" << std::endl;
+                }
+
+            }
+            
         }
 
         // WRITE STRING TO SSH
@@ -252,8 +296,7 @@ void readback() {
     int writeback = open(sshfifo.c_str(), O_WRONLY);
     showinput = true;
 
-    // FOREVER LOOP TO HAVE CONSTANT READER
-    // NO CONSTANT READER WILL CAUSE WRITE FUNCTION BELOW TO BLOCK INDEFINITELY
+    // FOREVER LOOP TO HAVE CONSTANT READER - NO CONSTANT READER WILL CAUSE WRITE FUNCTION BELOW TO BLOCK INDEFINITELY
     while (true) {
         sleep(0.1);
 
@@ -293,8 +336,10 @@ void readback() {
                         previousindb = prevcommand[prevcommandint - 1];
                     }
                     if (previousindb != entirecommandstring) {
+                        std::cout << "ENTIRE" << entirecommandstring << std::endl;
                         prevcommand[prevcommandint] = entirecommandstring;
                         prevcommandint = prevcommandint + 1;
+                        std::cout << "DB" << prevcommand[prevcommandint - 1] << std::endl;
                         if (prevcommandint == 101) {
                             prevcommandint = 0;
                         }
@@ -336,9 +381,11 @@ void readback() {
                             std::string previouscommand = prevcommand[showingcommand];
                             if (previouscommand != "") {
                                 entirecommandstring = previouscommand;
+                                std::cout << "PREV" << showingcommand << entirecommandstring << std::endl;
                                 // FIX THIS ADD CURSOR POSITION
                                 std::string tosendssh = "\r" + userfunction() + entirecommandstring;
                                 write(fd, tosendssh.c_str(), tosendssh.length());
+                                // fix this weird duplicating bug here?
                             }
                         
                         // DOWN ARROW
@@ -360,48 +407,6 @@ void readback() {
         }
     }
     close(fd);
-    return;
-}
-
-
-// OPENING SSH WRITER INTO FAKE TERMINAL
-void sshwriter() {
-    // OPEN FIFO WRITER
-    char arr1[80], arr2[80];
-    std::map<int, std::string> mappymap;
-    int fd = open(sshfifo.c_str(), O_WRONLY);
-    time_t time10 = time(0); 
-    std::string dateandtime = ctime(&time10);
-    std::string hellomessage = "Linux Server 6.6.74+rpt-rpi-v7 #1 SMP Raspbian 1:6.6.74-1+rpt1 (2025-01-27) armv7l\r\n\r\nThe programs included with the Debian GNU/Linux system are free software;\r\nthe exact distribution terms for each program are described in the\r\nindividual files in /usr/share/doc/*/copyright.\r\n\r\nDebian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent\r\npermitted by applicable law. Last login: " + dateandtime.substr(0, dateandtime.length() - 1) + " from " + "FIX THIS\r\n";
-    int cached = 0;
-
-    // userprompt fix this
-    //char usertype = (*currentuserssh).load();
-    //std::string userlogintype(1, usertype);
-    sleep(2);
-    //std::string userlogintype = *(usernamessh.load());
-    // FIX THIS - userprompt
-    std::string userlogintype = "pi";
-                    
-    // READ FOR FIFOS
-    int usernames = open(usefifo.c_str(), O_RDONLY, O_NONBLOCK);
-    char bufuser[1000];
-    int readable = read(usernames, bufuser, 1000);
-    if (readable == 0) {
-        std::string usernewbie = bufuser;
-        userlogintype = "TEMP";
-    } else {
-        userlogintype = bufuser;
-    }
-
-    std::string userprompt = userfunction();
-    
-    write(fd, hellomessage.c_str(), hellomessage.length());
-        
-    sleep(1);
-    
-    write(fd, userprompt.c_str(), userprompt.length());
-    
     return;
 }
 
