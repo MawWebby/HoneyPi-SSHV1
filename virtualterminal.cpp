@@ -62,10 +62,10 @@ std::string userfunction() {
 //////////////////////////////////////////////////
 // VIRTUAL TERMINL EMULATOR TO EXECUTE COMMANDS //
 //////////////////////////////////////////////////
-void virtualterminal(std::string command, int method) {
+void virtualterminal(std::string command, int method, std::string inputfifo, std::string outputfifo) {
     std::cout << "RECEIVED FINISHED COMMAND - " << command << " - FROM: " << method << std::endl;
     std::cout << "LENGTH WAS" << command.length() << std::endl;
-    int writeback = open(sshfifo.c_str(), O_WRONLY);
+    int writeback = open(outputfifo.c_str(), O_WRONLY);
     std::string commandpost = "";
     bool foundcommand = false;
     bool validflags = true;
@@ -256,7 +256,7 @@ void virtualterminal(std::string command, int method) {
                 pid = fork();
 
                 if (pid == 0 && successful == 0) {
-                    int inputs = open(cmdfifo.c_str(), O_RDWR);
+                    int inputs = open(inputfifo.c_str(), O_RDWR);
 
                     int duplicator2 = dup2(writeback, STDIN_FILENO);
                     duplicator2 = duplicator2 + dup2(inputs, STDOUT_FILENO);
@@ -290,19 +290,19 @@ void virtualterminal(std::string command, int method) {
 /////////////////
 // FIFO READER //
 /////////////////
-void readback() {
+void readback(std::string readfifo, std::string writefifo) {
     // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
-    int fd = open(cmdfifo.c_str(), O_RDWR);
-    int writeback = open(sshfifo.c_str(), O_WRONLY);
+    int fd = open(readfifo.c_str(), O_RDWR);
+    int writeback = open(writefifo.c_str(), O_WRONLY);
     showinput = true;
 
     // FOREVER LOOP TO HAVE CONSTANT READER - NO CONSTANT READER WILL CAUSE WRITE FUNCTION BELOW TO BLOCK INDEFINITELY
     while (true) {
         sleep(0.1);
 
-        char whyyy[100];
+        char whyyy[200];
         //int bytes = 0;
-        int bytes = read(fd, whyyy, 100);
+        int bytes = read(fd, whyyy, 200);
 
         std::string readfromfifo = whyyy;
         readfromfifo = readfromfifo.substr(0, bytes);
@@ -348,7 +348,7 @@ void readback() {
 
 
                     // EXECUTE THE COMMAND ON BEHALF
-                    virtualterminal(entirecommandstring, 1);
+                    virtualterminal(entirecommandstring, 1, readfifo, writefifo);
                     entirecommandstring = "";
 
                     std::string userprompt = userfunction();
@@ -407,6 +407,7 @@ void readback() {
         }
     }
     close(fd);
+    close(writeback);
     return;
 }
 
