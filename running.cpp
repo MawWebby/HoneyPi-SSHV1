@@ -461,9 +461,10 @@ int setup(int argc, char **argv) {
     // LOGFILE
     system("rm /var/rund/log.txt");
     system("touch /var/rund/log.txt");
+    system("mkdir /tmp/honey");
 
     // START
-    sendtolog("Hello, World from 2515!");
+    sendtolog("Hello, World from 2514!");
     sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
     sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
     sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ");
@@ -593,13 +594,6 @@ int setup(int argc, char **argv) {
     } else {
         sendtolog("DONE");
     }
-
-    
-    // CREATE THREAD FOR NEW FIFO READER
-    loginfo("Creating New FIFO Reader...", false);
-    std::thread readbackthread(readback);
-    readbackthread.detach();
-    sendtolog("DONE");
 
     
    
