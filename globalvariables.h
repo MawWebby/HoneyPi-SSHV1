@@ -90,5 +90,9 @@ extern std::atomic<int> numberofpassbackup;
 extern std::atomic<int> encounterederrors;
 
 
+// CHARACTER MAP
+extern std::string charactermap;
+
+
 // STRINGS TO MAIN SERVER
 extern std::string heartbeat;
