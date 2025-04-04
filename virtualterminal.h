@@ -12,6 +12,6 @@ std::string userfunction();
 void virtualterminal(std::string, int);
 
 // MAIN READBACK FUNCTION FROM SSH
-void readback();
+void readback(std::string, std::string);
 
 #endif
