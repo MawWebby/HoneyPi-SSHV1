@@ -39,7 +39,7 @@ const bool debugmode = false;
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <random>
 
 #include <pty.h>
 #include <utmp.h>
@@ -153,6 +153,41 @@ void set_default_keys(ssh_bind sshbind, int rsa_already_set, int dsa_already_set
 
 
 
+//// GENERATE RANDOM FILE NAMES FOR FIFOS ////
+std::string generateFifo() {
+
+    // Define the list of possible characters
+    const std::string CHARACTERS = charactermap;
+
+    // Create a random number generator
+    std::random_device rd;
+    std::mt19937 generator(rd());
+
+    // Create a distribution to uniformly select from all
+    // characters
+    std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+
+    // Generate the random string
+    std::string random_string = "";
+    for (int i = 0; i < 8; ++i) {
+        random_string += CHARACTERS[distribution(generator)];
+    }
+
+    std::string fullfifo = "/tmp/honey/" + random_string;
+    std::string touchfifo = "touch " + fullfifo;
+    int return23 = system(touchfifo.c_str());
+    if (return23 == 0) {
+        mkfifo(fullfifo.c_str(), 0666);
+        return fullfifo;
+    } else {
+        return "ERROR";
+    }
+
+    return "ERROR";
+}
+
+
+
 
 /* A userdata struct for channel. */
 struct channel_data_struct {
@@ -236,6 +271,7 @@ std::string ssh_get_client_ip(ssh_session session) {
 
     return ip_str;
 }
+
 
 
 
@@ -704,12 +740,30 @@ void handle_session(ssh_event event, ssh_session session) {
         ssh_channel_open_session(sdata.channel); 
 
 
+
+
+
+
+
+
+
         logwarning("Starting New SSH Trapped Session...", true);
+
+        // CREATE A RANDOM FIFO FILE NAME TO USE FOR SESSION
+        std::string tosshfifo = generateFifo();
+        std::string tocmdfifo = generateFifo();
+
+        if (tosshfifo == "ERROR" || tocmdfifo == "ERROR") {
+            logcritical("UNABLE TO CREATE FIFO!", true);
+            ssh_channel_close(sdata.channel);
+            return;
+        }
+
 
         
         // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
-        int fd = open(sshfifo.c_str(), O_RDWR);
-        int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
+        int fd = open(tosshfifo.c_str(), O_RDWR);
+        int cmdfifor = open(tocmdfifo.c_str(), O_WRONLY);
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
@@ -725,6 +779,21 @@ void handle_session(ssh_event event, ssh_session session) {
         sleep(3);
         std::string userprompt = userfunction();
         ssh_channel_write(sdata.channel, userprompt.c_str(), userprompt.length());
+
+
+
+
+
+        // CREATE THREAD FOR NEW FIFO READER
+        loginfo("Creating New FIFO Reader...", false);
+        std::thread readbackthread(readback, tocmdfifo, tosshfifo);
+        readbackthread.detach();
+        sendtolog("DONE");
+
+
+
+
+
 
 
 
