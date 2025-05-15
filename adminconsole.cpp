@@ -243,16 +243,21 @@ void processCommand(const std::string& command) {
             // CONTINUE IF PINGRESULTS CONTINUES TO EQUAL 0
             if (pingresults == 0) {
                 std::cout << "Sending All Conditions to Host!" << std::endl;
-                int testflagargs = 0;
-                int testflagargsmax = 34;
-                int returntype = 0;
-                while (testflagargs < testflagargsmax) {
-                    std::cout << "Sending Flag #" << testflagargs << "..." << std::endl;
-                    returntype = compilepacket("test", testflagargs);
-                    if (returntype != 0) {
-                        std::cout << "ERROR (" << returntype << ")" << std::endl;
+                int lessthan = 0;
+                int target = 5;
+                while (lessthan <= target) {
+                    int testflagargs = 0;
+                    int testflagargsmax = 34;
+                    int returntype = 0;
+                    while (testflagargs < testflagargsmax) {
+                        std::cout << "Sending Flag #" << testflagargs << "..." << std::endl;
+                        returntype = compilepacket("test", testflagargs);
+                        if (returntype != 0) {
+                            std::cout << "ERROR (" << returntype << ")" << std::endl;
+                        }
+                        testflagargs = testflagargs + 1;
                     }
-                    testflagargs = testflagargs + 1;
+                    lessthan = lessthan + 1;
                 }
                 std::cout << "Testing Fail Conditions..." << std::endl;
                 int failcondition = 0;
