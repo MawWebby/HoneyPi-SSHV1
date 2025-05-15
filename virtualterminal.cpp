@@ -1,4 +1,5 @@
 #include "globalvariables.h"
+#include "VirtioCommands/VirtioCommands.h"
 
 
 // AUTHORIZED KEYS
@@ -34,6 +35,11 @@ int prevcommandint = 0;
 int showingcommand = 0;
 
 
+// MAP FOR DANGEROUS COMMANDS
+std::map<std::string, int> dangerouscommands;
+
+
+
 
 // HELPER TO CALL FOR BASH USERNAME SCRIPT
 std::string userfunction() {
@@ -64,19 +70,28 @@ std::string userfunction() {
 //////////////////////////////////////////////////
 void virtualterminal(std::string command, int method, std::string inputfifo, std::string outputfifo) {
     std::cout << "RECEIVED FINISHED COMMAND - " << command << " - FROM: " << method << std::endl;
-    std::cout << "LENGTH WAS" << command.length() << std::endl;
+    std::cout << "LENGTH WAS:" << command.length() << std::endl;
     int writeback = open(outputfifo.c_str(), O_WRONLY);
     std::string commandpost = "";
     bool foundcommand = false;
     bool validflags = true;
-    bool sendtobash = true;
+    bool sendtobash = false;
     bool interactivecommand = false;
+    std::cout << "OPENED THE FIFOS" << std::endl;
 
 
     // MAIN EXECUTION OF DIFFERENT FAKE COMMANDS
     if (command.length() > 0) {
 
         // FIRST THING IS TO FILTER OUT BAD COMMANDS THAT I DON'T EVEN WANT TO FAKE HERE!!!
+        if (command.length() >= 4) {
+            if (dangerouscommands.find(command.substr(0,4)) != dangerouscommands.end()) {
+                logcritical("RECEIVED DANGEROUS COMMAND!", true);
+                return;
+                return;
+                return;
+            }
+        }
 
         // DIFFERENT VARIABLES FOR FASTER EXECUTING
         std::string firstthree = "";
@@ -205,13 +220,7 @@ void virtualterminal(std::string command, int method, std::string inputfifo, std
         // ***** u
             // uname
             if (firstfive == "uname") {
-                if (command.length() == 5) {
-                    commandpost = "Linux";
-                    foundcommand = true;
-                    sendtobash = false;
-                } else {
-                    sendtobash = true;
-                }
+                commandpost = uname(command);
             }
 
         // ***** v
@@ -237,10 +246,10 @@ void virtualterminal(std::string command, int method, std::string inputfifo, std
         if (foundcommand != true && sendtobash == false) {
             commandpost = "\r\n-bash: " + command + ": command not found\r";
         } else if (sendtobash == true && foundcommand != true) {
-            std::string sendcommandtohost = command + " > /tmp/sshfifo";
+            std::string sendcommandtohost = command + " >" + outputfifo;
             int returnvalue;
             if (interactivecommand == false) {
-                returnvalue = system(sendcommandtohost.c_str());
+                system(sendcommandtohost.c_str());
             } else {
                 // MAIN PID AND DUP PIPES FOR SYSTEM CALLS
                 pid_t pid = 0;
@@ -278,9 +287,12 @@ void virtualterminal(std::string command, int method, std::string inputfifo, std
 
         // WRITE STRING TO SSH
         if (commandpost != "" && sendtobash != true) {
+            std::cout << "WROTE TO " << outputfifo << ": " << commandpost << std::endl;
             write(writeback, commandpost.c_str(), commandpost.length());
+            std::cout << "DONE" << std::endl;
         }        
     }
+    close(writeback);
     return;
 }
 
@@ -292,6 +304,7 @@ void virtualterminal(std::string command, int method, std::string inputfifo, std
 /////////////////
 void readback(std::string readfifo, std::string writefifo) {
     // FIFO PIPE MUST BE RD/WR IN ORDER TO CLEAR THE BUFFER IN THE PIPE!
+    std::cout << "OPENED WITH " << readfifo << ":" << writefifo << std::endl;
     int fd = open(readfifo.c_str(), O_RDWR);
     int writeback = open(writefifo.c_str(), O_WRONLY);
     showinput = true;
@@ -329,30 +342,43 @@ void readback(std::string readfifo, std::string writefifo) {
                 // ASCII 13 - ENTER KEY TO COMMAND
                 if ((int)whyyy[0] == 13 && bytes == 1) {
                     // CHECK CONDITION FOR PREVIOUS AND THEN ADD TO DB
-                    std::string previousindb = "";
-                    if (prevcommandint == 0) {
-                        previousindb = prevcommand[100];
+
+                    // CHECK CONDITION FOR BACKSLASH
+                    char checks[1];
+                    strcpy(checks, (entirecommandstring.substr(entirecommandstring.length() - 1, 1)).c_str());
+                    //checks = entirecommandstring.substr(entirecommandstring.length() - 1, 1);
+                    if ((int)checks[0] == 92) {
+                        entirecommandstring = entirecommandstring.substr(entirecommandstring.length() - 1, 0);
                     } else {
-                        previousindb = prevcommand[prevcommandint - 1];
-                    }
-                    if (previousindb != entirecommandstring) {
-                        std::cout << "ENTIRE" << entirecommandstring << std::endl;
-                        prevcommand[prevcommandint] = entirecommandstring;
-                        prevcommandint = prevcommandint + 1;
-                        std::cout << "DB" << prevcommand[prevcommandint - 1] << std::endl;
-                        if (prevcommandint == 101) {
-                            prevcommandint = 0;
+
+                        std::string previousindb = "";
+                        if (prevcommandint == 0) {
+                            previousindb = prevcommand[100];
+                        } else {
+                            previousindb = prevcommand[prevcommandint - 1];
                         }
+                        if (previousindb != entirecommandstring) {
+                            std::cout << "ENTIRE" << entirecommandstring << std::endl;
+                            prevcommand[prevcommandint] = entirecommandstring;
+                            prevcommandint = prevcommandint + 1;
+                            std::cout << "DB" << prevcommand[prevcommandint - 1] << std::endl;
+                            if (prevcommandint == 101) {
+                                prevcommandint = 0;
+                            }
+                        }
+                        showingcommand = prevcommandint;
+    
+    
+                        // EXECUTE THE COMMAND ON BEHALF
+                        virtualterminal(entirecommandstring, 1, readfifo, writefifo);
+                        entirecommandstring = "";
+
+                        sleep(1);
+    
+                        std::string userprompt = userfunction();
+                        write(writeback, userprompt.c_str(), userprompt.length());
                     }
-                    showingcommand = prevcommandint;
 
-
-                    // EXECUTE THE COMMAND ON BEHALF
-                    virtualterminal(entirecommandstring, 1, readfifo, writefifo);
-                    entirecommandstring = "";
-
-                    std::string userprompt = userfunction();
-                    write(writeback, userprompt.c_str(), userprompt.length());
 
                 } else if (bytes != 3) {
                     entirecommandstring = entirecommandstring + readfromfifo.substr(0,bytes);
@@ -380,6 +406,8 @@ void readback(std::string readfifo, std::string writefifo) {
                             }
                             std::string previouscommand = prevcommand[showingcommand];
                             if (previouscommand != "") {
+                                // TURNS OUT, THAT WAS NOT THE ISSUE
+                                //entirecommandstring = previouscommand.substr(userfunction().length() + 4, previouscommand.length() - userfunction().length() - 4);
                                 entirecommandstring = previouscommand;
                                 std::cout << "PREV" << showingcommand << entirecommandstring << std::endl;
                                 // FIX THIS ADD CURSOR POSITION

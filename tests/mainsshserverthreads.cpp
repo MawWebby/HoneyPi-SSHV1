@@ -21,9 +21,6 @@ The goal is to show the API in action.
 const bool debugmode = false;
 
 
-std::string myfifo = "/tmp/myfifo";
-
-
 
 ////////////////////////////////////
 ////////////////////////////////////
@@ -106,6 +103,7 @@ std::string myfifo = "/tmp/myfifo";
 char authorizedkeys[DEF_STR_SIZE] = {0};
 
 
+std::string myfifo = "/tmp/myfifo";
 
 
 ////////////////////////////
@@ -574,8 +572,9 @@ static int process_stdout(socket_t fd, int revents, void *userdata) {
 
     if (channel != NULL && (revents & POLLIN) != 0) {
         n = read(fd, buf, BUF_SIZE);
+        std::string buffer = buf;
         if (n > 0) {
-            fprintf(stderr, buf);
+            fprintf(stderr, buffer.c_str());
             ssh_channel_write(channel, buf, n);
             memset(buf, 0, BUF_SIZE);
         }

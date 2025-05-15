@@ -6,7 +6,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-std::string honeyversion = "0.4.0";
+std::string honeyversion = "0.5.0";
 
 
 
@@ -77,7 +77,7 @@ long long int startuptime = 0;
 long long int currenttime = 0;
 long long int timesincestartup = 0;
 int secondsperyear = 31536000;
-int daysperyear = 365.25;
+float daysperyear = 365.25;
 int secondsperday = 86400;
 int secondsperhour = 3600;
 int secondsperminute = 60;
@@ -494,9 +494,9 @@ int setup(int argc, char **argv) {
     // DELAY FOR SYSTEM TO START FURTHER
     sleep(1);
     if (debug == true) {
-        int testing = system("./debug");
+        system("./debug");
     } else {
-        int testing = system("rm debug");
+        system("rm debug");
     }
 
 
@@ -558,7 +558,7 @@ int setup(int argc, char **argv) {
     }   
   
     loginfo("Removing Unneeded Dependencies!", true);
-    int removepackage = system("apt-get remove openssh-server openssh-client -y > nul:");
+    system("apt-get remove openssh-server openssh-client -y > nul:");
 
 
 
@@ -587,7 +587,7 @@ int setup(int argc, char **argv) {
     int onethirtyseven = system(pwdtouchfifo.c_str()); //mkfifo(pwdfifo.c_str(), 0666);
     int bush = mkfifo(bshfifo.c_str(), 0666);
     int home = mkfifo(homedirfifo.c_str(), 0666);
-    if (ramble > 0 && rugby > 0 && golf > 0 && ninetynine > 0 && bush > 0 && onethirtyseven > 0) {
+    if (ramble > 0 && rugby > 0 && golf > 0 && ninetynine > 0 && bush > 0 && onethirtyseven > 0 && home > 0) {
         sendtolog("ERROR");
         logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true);
         startupchecks = startupchecks + 1;
@@ -684,9 +684,9 @@ int main(int argc, char **argv) {
         
 
         // READ RUNNNING FLAGS
-        int serverstop = stopSIGNAL.load();
-        int serverupdate = updateSIGNAL.load();
-        int serverrunning = serverStarted.load();
+        serverstop = stopSIGNAL.load();
+        serverupdate = updateSIGNAL.load();
+        serverrunning = serverStarted.load();
 
         
         //std::cout << "CORRECT NUMPACK:" << numberofpassbackup.load() << std::endl;
