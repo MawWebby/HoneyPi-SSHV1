@@ -35,7 +35,7 @@ WORKDIR /usr/src/honeypi
 
 # MAIN FILES TO COMPILE
 #RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp authtoken.cpp mainssh.cpp virtualterminal.cpp -lssh
+RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp VirtioCommands/authtoken.cpp mainssh.cpp virtualterminal.cpp VirtioCommands/VirtioCommands.h VirtioCommands/Commands/*.cpp -lssh
 #RUN g++ -o beta beta.cpp -lssh
 
 # TEST FILES TO COMPILE
