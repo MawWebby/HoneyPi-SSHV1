@@ -137,5 +137,6 @@ int main() {
     sleep(3);
     loginfo("Installing Packages Complete...");
     sleep(1);
-    int completed = system("./run");
+    
+    system("./run");
 }
