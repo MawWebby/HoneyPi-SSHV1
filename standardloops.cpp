@@ -293,11 +293,10 @@ int stringtoint(std::string values) {
             if (validcase != true) {
                 loginfo("AN INVALID CHARACTER WAS RECEIVED (STD->INT); THE CHARACTER WAS: ", false);
                 sendtolog(substringvalue);
-                completedwhile = true;
                 return 0;
             }   
         } else {
-            completedwhile == true;
+            completedwhile = true;
         }
         timing9760 = timing9760 + 1;
     }

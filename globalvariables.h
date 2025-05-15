@@ -51,7 +51,7 @@ extern std::string endline;
 // DEPENDENCY FILES
 #include "adminconsole.h"
 #include "standardloops.h"
-#include "authtoken.h"
+#include "VirtioCommands/authtoken.h"
 #include "virtualterminal.h"
 #include "mainssh.h"
 
