@@ -1,20 +1,3 @@
-/* This is a sample implementation of a libssh based SSH server */
-/*
-Copyright 2014 Audrius Butkevicius
-
-This file is part of the SSH Library
-
-You are free to copy this file, modify it in any way, consider it being public
-domain. This does not apply to the rest of the library though, but it is
-allowed to cut-and-paste working code from this file to any license of
-program.
-The goal is to show the API in action.
-*/
-
-
-// THANK YOU AUDRIUS BUTKEVICIUS AND THE LIBSSH LIBRARY FOR PROVIDING THIS GREAT EXAMPLE!
-
-
 ////////////////////////////////
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
@@ -234,18 +217,9 @@ static int data_function(ssh_session session, ssh_channel channel, void *data, u
     (void) channel;
     (void) is_stderr;
 
-    //std::cout << "REACHED HERE IN DATA!!!" << std::endl;
-
-    int cmdfifor = open(cmdfifo.c_str(), O_WRONLY);
-
-    //std::cout << (char *) data << std::endl;
-
-    int n = write(cmdfifor, (char *) data, len);
-
+    int n = sizeof((char *) data);
     data = NULL;
 
-
-    close(cmdfifor);
     return n;
 }
 
@@ -522,9 +496,9 @@ static int auth_password(ssh_session session, const char *user, const char *pass
     std::string username23 = user;
     std::string password23 = pass;
     std::string senddata = "INTERNAL: USER=" + username23 + "PASS=" + password23 + endline;
-    int bytes = write(fd, senddata.c_str(), senddata.length());
+    write(fd, senddata.c_str(), senddata.length());
     
-    sleep(0.5);
+    sleep(1);
     close(fd);
 
     sleep(1);
@@ -704,7 +678,7 @@ void handle_session(ssh_event event, ssh_session session) {
             return;
         }
         n++;
-        sleep(0.2);
+        sleep(1);
         //numberofpassbackup.store(sdata.passwords_tried);
     }
 
@@ -774,7 +748,7 @@ void handle_session(ssh_event event, ssh_session session) {
         time_t time10 = time(0); 
         std::string dateandtime = ctime(&time10);
         std::string hellomessage = "Linux Server 6.6.74+rpt-rpi-v7 #1 SMP Raspbian 1:6.6.74-1+rpt1 (2025-01-27) armv7l\r\n\r\nThe programs included with the Debian GNU/Linux system are free software;\r\nthe exact distribution terms for each program are described in the\r\nindividual files in /usr/share/doc/*/copyright.\r\n\r\nDebian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent\r\npermitted by applicable law. Last login: " + dateandtime.substr(0, dateandtime.length() - 1) + " from " + ssh_get_client_ip(session);
-        sleep(2.5);
+        sleep(2);
         ssh_channel_write(sdata.channel, hellomessage.c_str(), hellomessage.length());
         sleep(3);
         std::string userprompt = userfunction();
@@ -804,13 +778,14 @@ void handle_session(ssh_event event, ssh_session session) {
             char buf[10000] = "";
             int bytesssh = ssh_channel_read_nonblocking(sdata.channel, buf, 10000, false);
             std::string bufact = buf;
+            //std::cout << bytesssh << std::endl;
             if (bytesssh > 0) {
                 if (bufact.substr(0,bytesssh) != "") {
                     std::cout << "SAW THIS: " << bufact << std::endl;
                     write(cmdfifor, (bufact.substr(0,bytesssh)).c_str(), (bufact.substr(0,bytesssh)).length());
                 }
             }
-            sleep(0.1);
+            sleep(1);
 
 
             // SEND DATA OVER THE PIPE
