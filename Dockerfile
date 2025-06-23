@@ -69,7 +69,7 @@ ENTRYPOINT ["./run"]
 #ENTRYPOINT ["./beta"]
 
 ##### Branch and Version Stuff
-LABEL Name=honeypi-guestssh Version=0.5.0
+LABEL Name=honeypi-guestsshV1 Version=0.6.0
 
 
 

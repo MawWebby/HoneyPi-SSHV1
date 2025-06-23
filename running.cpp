@@ -6,7 +6,7 @@
 ////// CONSTANT VARIABLES //////
 ////////////////////////////////
 const bool debugmode = false;
-std::string honeyversion = "0.5.0";
+std::string honeyversion = "0.6.0";
 
 
 
