@@ -125,9 +125,9 @@ struct session_data_struct {
 ////////////////////////////////////
 ////////////////////////////////////
 int datawaiting() {
-    logcritical(sshterminals[0], true);
+    logcritical(sshterminals[0], true, false);
     if (logvariableset == true) {
-        loginfo("VARIABLE SET", true);
+        loginfo("VARIABLE SET", true, false);
         attacked.store(1);
         return 1;
     } else {
@@ -369,11 +369,11 @@ static int pty_request(ssh_session session, ssh_channel channel, const char *ter
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Set Size of SSH Terminal Window", true);
+    loginfo("Set Size of SSH Terminal Window", true, false);
 
 
     if (openpty(&cdata->pty_master, &cdata->pty_slave, NULL, NULL, cdata->winsize) != 0) {
-        logcritical("Failed to Open PTY!", true);
+        logcritical("Failed to Open PTY!", true, true);
         return SSH_ERROR;
     }
 
@@ -391,13 +391,13 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Resizing SSH Terminal Window", true);
+    loginfo("Resizing SSH Terminal Window", true, true);
 
     if (cdata->pty_master != -1) {
         return ioctl(cdata->pty_master, TIOCSWINSZ, cdata->winsize);
     }
 
-    logcritical("Failed to Resize PTY!", true);
+    logcritical("Failed to Resize PTY!", true, true);
     return SSH_ERROR;
 }
 
@@ -435,13 +435,12 @@ static ssh_channel channel_open(ssh_session session, void *userdata) {
 //// RANDOM PACKAGE INSTALL THREAD ////
 ///////////////////////////////////////
 void randompackagethread() {
-    loginfo("Randomizing Packages!", true);
+    loginfo("Randomizing Packages!", true, true);
     int returntype = system("/usr/src/honeypi/randomize");
     if (returntype == 0) {
-        loginfo("Randomized System Successfully", true);
+        loginfo("Randomized System Successfully", true, true);
     } else {
-        logwarning("RANDOMIZE RETURN == ", false);
-        sendtolog(inttostring(returntype));
+        logwarning("RANDOMIZE RETURN == " + inttostring(returntype), false, true);
     }
 }
 
@@ -464,33 +463,37 @@ int setup(int argc, char **argv) {
     system("mkdir /tmp/honey");
 
     // START
-    sendtolog("Hello, World from 2514!");
-    sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ");
-    sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ");
-    sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ");
-    sendtolog("  |   |     |   |  /   /¯¯¯¯¯¯¯¯`   `   |     `    |  |  |  |____________     `  `    /   /             |   |______/   |        |   |        ");
-    sendtolog("  |    ¯¯¯¯¯    |  |   |         |   |  |      `   |  |  |               |     `  `  /   /              |   __________/         |   |        ");
-    sendtolog("  |    _____    |  |   |         |   |  |   |`  `  |  |  |               |      `  `/   /               |   |                   |   |        ");
-    sendtolog("  |   |     |   |  |   |         |   |  |   | `  ` |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯        |     |                |   |                   |   |        ");
-    sendtolog("  |   |     |   |  |   |         |   |  |   |  `  `|  |  |  |____________        |     |                |   |                   |   |        ");
-    sendtolog("  |   |     |   |  `   `¯¯¯¯¯¯¯¯¯    /  |   |   `     |  |               |       |     |                |   |             |¯¯¯¯¯     ¯¯¯¯¯|  ");
-    sendtolog("  |   |     |   |   `               /   |   |    `    |  |               |       |     |                |   |             |               |  ");
-    sendtolog("  ¯¯¯¯¯     ¯¯¯¯¯    ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯    ¯¯¯¯      `¯¯¯   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯                 ¯¯¯¯¯             ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   ");
-    sendtolog("GUEST SSH!");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("Program by Matthew Whitworth (MawWebby)");
-    sendtolog("Version " + honeyversion);
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("");
-    sendtolog("STARTING");
+    sendtolog("Hello, World from 2514!", false);
+    sendtolog("  _____     _____     ____________      _____      ____  ________________   ____         ____           ______________     ________________  ", false);
+    sendtolog("  |   |     |   |    /            `     |   `      |  |  |               |  `  `        /   /           |             `   |               |  ", false);
+    sendtolog("  |   |     |   |   /              `    |    `     |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯    `  `      /   /            |   |¯¯¯¯¯¯`   |  |_____    ______|  ", false);
+    sendtolog("  |   |     |   |  /   /¯¯¯¯¯¯¯¯`   `   |     `    |  |  |  |____________     `  `    /   /             |   |______/   |        |   |        ", false);
+    sendtolog("  |    ¯¯¯¯¯    |  |   |         |   |  |      `   |  |  |               |     `  `  /   /              |   __________/         |   |        ", false);
+    sendtolog("  |    _____    |  |   |         |   |  |   |`  `  |  |  |               |      `  `/   /               |   |                   |   |        ", false);
+    sendtolog("  |   |     |   |  |   |         |   |  |   | `  ` |  |  |  |¯¯¯¯¯¯¯¯¯¯¯¯        |     |                |   |                   |   |        ", false);
+    sendtolog("  |   |     |   |  |   |         |   |  |   |  `  `|  |  |  |____________        |     |                |   |                   |   |        ", false);
+    sendtolog("  |   |     |   |  `   `¯¯¯¯¯¯¯¯¯    /  |   |   `     |  |               |       |     |                |   |             |¯¯¯¯¯     ¯¯¯¯¯|  ", false);
+    sendtolog("  |   |     |   |   `               /   |   |    `    |  |               |       |     |                |   |             |               |  ", false);
+    sendtolog("  ¯¯¯¯¯     ¯¯¯¯¯    ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯    ¯¯¯¯      `¯¯¯   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯                 ¯¯¯¯¯             ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   ", false);
+    sendtolog("GUEST SSH!", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("Program by Matthew Whitworth (MawWebby)", false);
+    sendtolog("Version " + honeyversion, false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("", false);
+    sendtolog("STARTING", false);
     
+
+    compilepacket("Starting SSH Guest VM!", 200);
+    
+
     // DELAY FOR SYSTEM TO START FURTHER
     sleep(1);
     if (debug == true) {
@@ -501,23 +504,34 @@ int setup(int argc, char **argv) {
 
 
     // SET DOCKER CONTAINER OPTIONS
-    loginfo("DOCKER - Setting Container Options...", false);
+    loginfo("DOCKER - Setting Container Options...", false, true);
     signal(SIGTERM, handleSignal);
     signal(SIGINT, handleSignal);
-    sendtolog("OK");
+    sendtolog("OK", false);
+
+
+    // PINGING NETWORK
+    loginfo("NETWOR - Pinging Network...", false, true);
+    int pingnetwork21 = pingnetwork();
+    if (pingnetwork21 != 0) {
+        logcritical("UNABLE TO CONNECT TO NETWORK!", true, true);
+        logcritical("NOT CONTINUING!", true, true);
+        startupchecks = startupchecks + 1;
+        return startupchecks;
+    }
     
 
 
     // CHECK FOR SYSTEM UPDATES
-    loginfo("Checking for Updates...", false);
+    loginfo("UPDATE - Checking for Updates...", false, true);
     int returnedvalue = system("apt-get update > nul:");
     if (returnedvalue == 0) {
-        sendtolog("Done");
+        sendtolog("Done", false);
     } else {
-        sendtolog("ERROR");
-        logcritical("UNABLE TO CHECK FOR SYSTEM UPDATES!", true);
-        logcritical("This could be potentially dangerous!", true);
-        logcritical("KILLING PROCESS!", true);
+        sendtolog("ERROR", true);
+        logcritical("UNABLE TO CHECK FOR SYSTEM UPDATES!", true, true);
+        logcritical("This could be potentially dangerous!", true, true);
+        logcritical("KILLING PROCESS!", true, true);
         startupchecks = startupchecks + 1;
         return 1;
         return 1;
@@ -527,15 +541,15 @@ int setup(int argc, char **argv) {
 
 
     // CHECK FOR SYSTEM UPDATES
-    loginfo("Updating System...", false);
+    loginfo("UPDATE - Updating System...", false, true);
     int returnedvalue2 = system("apt-get update > nul:");
     if (returnedvalue2 == 0) {
-        sendtolog("Done");
+        sendtolog("Done", false);
     } else {
-        sendtolog("ERROR");
-        logcritical("UNABLE TO UPGRADE SYSTEM!", true);
-        logcritical("This could be potentially dangerous!", true);
-        logcritical("KILLING PROCESS!", true);
+        sendtolog("ERROR", true);
+        logcritical("UNABLE TO UPGRADE SYSTEM!", true, true);
+        logcritical("This could be potentially dangerous!", true, true);
+        logcritical("KILLING PROCESS!", true, true);
         startupchecks = startupchecks + 1;
         return 1;
         return 1;
@@ -545,19 +559,19 @@ int setup(int argc, char **argv) {
 
 
     // RANDOMIZING SYSTEM
-    loginfo("Starting Random Installation...", false);
+    loginfo("RANDOM - Starting Random Installation...", false, true);
     std::thread randompack(randompackagethread);
     randompack.detach();
-    sendtolog("DONE");
+    sendtolog("DONE", false);
 
 
-    loginfo("Finishing SSH Guest V1 startup...", true);
+    loginfo("SSH_VM - Finishing SSH Guest V1 startup...", true, true);
     if (numberofpasswordstofake == 0) {
         srand(time(0));
         numberofpasswordstofake = rand() % 200 + 50; // % 2 + 2 ( % 100 + 100)
     }   
   
-    loginfo("Removing Unneeded Dependencies!", true);
+    loginfo("Removing Unneeded Dependencies!", true, true);
     system("apt-get remove openssh-server openssh-client -y > nul:");
 
 
@@ -579,7 +593,7 @@ int setup(int argc, char **argv) {
     //////////////////////
 
     // CREATE NEW PIPES
-    loginfo("Creating New FIFO Pipes...", false);
+    loginfo("COMMS  - Creating New FIFO Pipes...", false, true);
     int ramble = mkfifo(sshfifo.c_str(), 0666);
     int rugby = mkfifo(cmdfifo.c_str(), 0666);
     int golf = mkfifo(infifo.c_str(), 0666);
@@ -588,21 +602,21 @@ int setup(int argc, char **argv) {
     int bush = mkfifo(bshfifo.c_str(), 0666);
     int home = mkfifo(homedirfifo.c_str(), 0666);
     if (ramble > 0 && rugby > 0 && golf > 0 && ninetynine > 0 && bush > 0 && onethirtyseven > 0 && home > 0) {
-        sendtolog("ERROR");
-        logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true);
+        sendtolog("ERROR", true);
+        logcritical("AN ERROR OCCURRED STARTING FIFO PIPES!", true, true);
         startupchecks = startupchecks + 1;
     } else {
-        sendtolog("DONE");
+        sendtolog("DONE", false);
     }
 
     
    
 
     // START INTERNAL FIFO PIPE
-    loginfo("Starting Internal Pipe...", false);
+    loginfo("COMMS  - Starting Internal Pipe...", false, true);
     std::thread internalthread(internalFIFORead);
     internalthread.detach();
-    sendtolog("Done");
+    sendtolog("Done", false);
 
 
     
@@ -610,18 +624,18 @@ int setup(int argc, char **argv) {
     //// CREATE ADMIN CONSOLE THREAD ////
     /////////////////////////////////////
     if (startupchecks == 0) {
-        loginfo("Starting SSH Admin Console...", false);
+        loginfo("ADMIN  - Starting SSH Admin Console...", false, true);
         std::thread adminConsole(interactiveTerminal);
         adminConsole.detach();
-        sendtolog("Done");
+        sendtolog("Done", false);
 
-        loginfo("Starting SSH Thread...", false);
+        loginfo("SSH_VM - Starting SSH Thread...", false, true);
         std::thread sshterminalstartthread(sshterminalStart);
         sshterminalstartthread.detach();
-        sendtolog("Done");
+        sendtolog("Done", false);
 
     } else {
-        logcritical("NOT STARTING ADMIN CONSOLE!", true);
+        logcritical("ADMIN  - NOT STARTING ADMIN CONSOLE!", true, true);
     }
 
 
@@ -644,11 +658,14 @@ int main(int argc, char **argv) {
     // STARTUP AND CHECKS
     int startupchecks = setup(argc, argv);
 
-    // PING NETWORK TEST  
-    int testing234 = pingnetwork();
+    if (startupchecks != 0) {
+        logcritical("Startup Checks DID NOT RETURN 0!", true, true);
+        logcritical("NOT CONTINUING WITH SSH GUEST!", true, true);
+    }
 
 
-    loginfo("SSH Guest has started successfully...", true);
+
+    loginfo("SSH_VM - SSH Guest has started successfully...", true, true);
     
     // RUNNING FLAGS
     int serverstop = 0;
@@ -670,13 +687,13 @@ int main(int argc, char **argv) {
             signaltimer = 0;
             int pingheart = pinghost();
             if (pingheart == 50) {
-                logcritical("AN ECEPTION OCCURRED THAT CAN NOT BE RECOVERED HAPPENED TRYING TO PING HOST!", true);
-                logcritical("KILLING!", true);
+                logcritical("AN ECEPTION OCCURRED THAT CAN NOT BE RECOVERED HAPPENED TRYING TO PING HOST!", true, true);
+                logcritical("KILLING!", true, true);
                 return 25;
                 return 25;
                 return 25;
             } else if (pingheart == 1) {
-                logcritical("AN ERROR OCCURRED SEARCHING FOR HOST!", true);
+                logcritical("AN ERROR OCCURRED SEARCHING FOR HOST!", true, true);
             }
         }
 

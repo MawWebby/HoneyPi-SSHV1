@@ -268,11 +268,11 @@ static int pty_request(ssh_session session, ssh_channel channel, const char *ter
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Set Size of SSH Terminal Window", true);
+    loginfo("Set Size of SSH Terminal Window", true, true);
 
 
     if (openpty(&cdata->pty_master, &cdata->pty_slave, NULL, NULL, cdata->winsize) != 0) {
-        logcritical("Failed to Open PTY!", true);
+        logcritical("Failed to Open PTY!", true, true);
         return SSH_ERROR;
     }
 
@@ -290,13 +290,13 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
     cdata->winsize->ws_xpixel = px;
     cdata->winsize->ws_ypixel = py;
 
-    loginfo("Resizing SSH Terminal Window", true);
+    loginfo("Resizing SSH Terminal Window", true, true);
 
     if (cdata->pty_master != -1) {
         return ioctl(cdata->pty_master, TIOCSWINSZ, cdata->winsize);
     }
 
-    logcritical("Failed to Resize PTY!", true);
+    logcritical("Failed to Resize PTY!", true, true);
     return SSH_ERROR;
 }
 
@@ -311,12 +311,12 @@ static int pty_resize(ssh_session session, ssh_channel channel, int cols, int ro
 ///////////////////////////////////////////
 static int exec_pty(const char *mode, const char *command, struct channel_data_struct *cdata) {
 
-    loginfo("Starting PTY SSH Terminal", true);
+    loginfo("Starting PTY SSH Terminal", true, true);
     switch(cdata->pid = fork()) {
         case -1:
             close(cdata->pty_master);
             close(cdata->pty_slave);
-            logcritical("Failed to Fork PTY!", true);
+            logcritical("Failed to Fork PTY!", true, true);
             return SSH_ERROR;
         case 0:
             
@@ -342,7 +342,7 @@ static int exec_pty(const char *mode, const char *command, struct channel_data_s
 
             //fprintf(stderr, "Start of new command line\n");
             fprintf(stderr, "Hello, World!\n");
-            loginfo("TEST123", true);
+            loginfo("TEST123", true, true);
             //execl("/bin/sh", "sh", mode, command, NULL);
             
             while (true) {
@@ -407,7 +407,7 @@ static int auth_password(ssh_session session, const char *user, const char *pass
 
     (void) session;
 
-    logwarning("Using WASTE Protocol", true);
+    logwarning("Using WASTE Protocol", true, true);
     numberofpasswordstried.store(numberofpassbackup.load());
 
     // DEBUGGING
@@ -425,7 +425,7 @@ static int auth_password(ssh_session session, const char *user, const char *pass
         if (writeuserstatus < 1 || writepassstatus == -1) {
             std::cout << "WROTE USER " << writeuserstatus << " into " << username << ":)" << std::endl;
             std::cout << "WROTE PASS " << writepassstatus << " into " << password << ":)" << std::endl;
-            logcritical("FIFO ERROR OCCURRED!", true);
+            logcritical("FIFO ERROR OCCURRED!", true, true);
             sdata->authenticated = 0;
             return SSH_AUTH_DENIED;
         } else {
@@ -460,7 +460,7 @@ static int auth_password(ssh_session session, const char *user, const char *pass
             close(usernamepipe);
             close(passwordpipe);
             if (writeuserstatus < 1 || writepassstatus == -1) {
-                logcritical("FIFO ERROR OCCURRED!", true);
+                logcritical("FIFO ERROR OCCURRED!", true, true);
                 sdata->authenticated = 0;
                 return SSH_AUTH_DENIED;
             } else {
@@ -721,14 +721,14 @@ void handle_session(ssh_event event, ssh_session session) {
 
 
 
-        logwarning("Starting New SSH Trapped Session...", true);
+        logwarning("Starting New SSH Trapped Session...", true, true);
 
         // CREATE A RANDOM FIFO FILE NAME TO USE FOR SESSION
         std::string tosshfifo = generateFifo();
         std::string tocmdfifo = generateFifo();
 
         if (tosshfifo == "ERROR" || tocmdfifo == "ERROR") {
-            logcritical("UNABLE TO CREATE FIFO!", true);
+            logcritical("UNABLE TO CREATE FIFO!", true, true);
             ssh_channel_close(sdata.channel);
             return;
         }
@@ -759,10 +759,10 @@ void handle_session(ssh_event event, ssh_session session) {
 
 
         // CREATE THREAD FOR NEW FIFO READER
-        loginfo("Creating New FIFO Reader...", false);
+        loginfo("Creating New FIFO Reader...", false, true);
         std::thread readbackthread(readback, tocmdfifo, tosshfifo);
         readbackthread.detach();
-        sendtolog("DONE");
+        sendtolog("DONE", false);
 
 
 

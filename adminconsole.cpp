@@ -123,7 +123,7 @@ void processCommand(const std::string& command) {
         std::string password = terminalinput(true);
         system("clear");
         sleep(1);
-        logwarning("Attempted Login @ " + username + "; Pass: " + password, true);
+        logwarning("Attempted Login @ " + username + "; Pass: " + password, true, true);
         int result = 0;
 
         // FIX THIS
@@ -133,11 +133,11 @@ void processCommand(const std::string& command) {
         if (result != 0) {
             useraccesslevel = result;
             std::cout << "Login was Successful" << std::endl;
-            loginfo("Login Successful", true);
+            loginfo("Login Successful", true, true);
         } else {
             useraccesslevel = 0;
             std::cout << "Login DENIED!" << std::endl;
-            logcritical("Login DENIED @ " + username + "; Pass: " + password, true);
+            logcritical("Login DENIED @ " + username + "; Pass: " + password, true, true);
         }
         sleep(3);
         system("clear");
@@ -379,7 +379,7 @@ void interactiveTerminal() {
                 break;
         }
         command = terminalinput(false);
-        sendtolog("[CONSOLE] - Received Command: " + command);
+        sendtolog("[CONSOLE] - Received Command: " + command, true);
 
         if (command.empty() != true) {
             processCommand(command);

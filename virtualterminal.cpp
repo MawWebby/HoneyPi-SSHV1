@@ -86,7 +86,7 @@ void virtualterminal(std::string command, int method, std::string inputfifo, std
         // FIRST THING IS TO FILTER OUT BAD COMMANDS THAT I DON'T EVEN WANT TO FAKE HERE!!!
         if (command.length() >= 4) {
             if (dangerouscommands.find(command.substr(0,4)) != dangerouscommands.end()) {
-                logcritical("RECEIVED DANGEROUS COMMAND!", true);
+                logcritical("RECEIVED DANGEROUS COMMAND!", true, true);
                 return;
                 return;
                 return;
@@ -311,7 +311,7 @@ void readback(std::string readfifo, std::string writefifo) {
 
     // FOREVER LOOP TO HAVE CONSTANT READER - NO CONSTANT READER WILL CAUSE WRITE FUNCTION BELOW TO BLOCK INDEFINITELY
     while (true) {
-        sleep(0.1);
+        sleep(0.1); // FIX THIS
 
         char whyyy[200];
         //int bytes = 0;
@@ -427,7 +427,7 @@ void readback(std::string readfifo, std::string writefifo) {
                     }
                     
                 } else {
-                    logcritical("AN INVALID CASE WAS RECEIVED! CONTINUE WITH REFRESHING SSH!", true);
+                    logcritical("AN INVALID CASE WAS RECEIVED! CONTINUE WITH REFRESHING SSH!", true, true);
 
                     // CODE TO REFRESH SSH
                 }
