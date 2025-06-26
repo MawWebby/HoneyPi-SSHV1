@@ -102,7 +102,7 @@ std::string timedetector() {
 ////////////////////////////
 // Send to Logger Scripts //
 ////////////////////////////
-void sendtolog(std::string data2) {
+void sendtolog(std::string data2, bool sendtomain) {
     serverStatus = serverStarted.load();
     updating = updateSIGNAL.load();
     stopping = stopSIGNAL.load();
@@ -110,6 +110,10 @@ void sendtolog(std::string data2) {
     if (serverStatus == false || updating == true || stopping == true) {
         std::cout << data2 << std::endl;
     } 
+
+    if (sendtomain == true) {
+        compilepacket(data2, 200);
+    }
     
     std::ofstream logfilestream;
     logfilestream.open(logfile, std::ofstream::out | std::ofstream::app);
@@ -122,7 +126,7 @@ void sendtolog(std::string data2) {
     logfilestream.close();
 }
 
-void sendtologopen(std::string data2) {
+void sendtologopen(std::string data2, bool sendtomain) {
     serverStatus = serverStarted.load();
     updating = updateSIGNAL.load();
     stopping = stopSIGNAL.load(); 
@@ -130,6 +134,10 @@ void sendtologopen(std::string data2) {
     if (serverStatus == false || updating == true || stopping == true) {
         std::cout << data2;
     } 
+
+    if (sendtomain == true) {
+        compilepacket(data2, 200);
+    }
     
     std::ofstream logfilestream;
     logfilestream.open(logfile, std::ofstream::out | std::ofstream::app);
@@ -142,50 +150,50 @@ void sendtologopen(std::string data2) {
     logfilestream.close();
 }
 
-void logdebug(std::string data2, bool complete) {
+void logdebug(std::string data2, bool complete, bool sendtomain) {
     std::string timedet = timedetector();
     data2 = "[DEBUG] - " + timedet + " - " + data2;
     if (complete == false) {
-        sendtologopen(data2);
+        sendtologopen(data2, sendtomain);
     } else {
-        sendtolog(data2);
+        sendtolog(data2, sendtomain);
     }
 }
 
-void loginfo(std::string data2, bool complete) {
+void loginfo(std::string data2, bool complete, bool sendtomain) {
     std::string timedet = timedetector();
     data2 = "[INFO ] - " + timedet + " - " + data2;
     if (complete == false) {
-        sendtologopen(data2);
+        sendtologopen(data2, sendtomain);
     } else {
-        sendtolog(data2);
+        sendtolog(data2, sendtomain);
     }
 }
 
-void logwarning(std::string data2, bool complete) {
+void logwarning(std::string data2, bool complete, bool sendtomain) {
     std::string timedet = timedetector();
     data2 = "[WARN*] - " + timedet + " - " + data2;
     if (complete == false) {
-        sendtologopen(data2);
+        sendtologopen(data2, sendtomain);
     } else {
-        sendtolog(data2);
+        sendtolog(data2, sendtomain);
     }
 }
 
-void logcritical(std::string data2, bool complete) {
+void logcritical(std::string data2, bool complete, bool sendtomain) {
     std::string timedet = timedetector();
     data2 = "[ERRNO] - " + timedet + " - " + data2;
     if (complete == false) {
-        sendtologopen(data2);
+        sendtologopen(data2, sendtomain);
     } else {
-        sendtolog(data2);
+        sendtolog(data2, sendtomain);
     }
 }
 
-void logerror(std::string headerdata2, std::string errormessage) {
+void logerror(std::string headerdata2, std::string errormessage, bool sendtomain) {
     std::string timedet = timedetector();
     std::string data2 = "[ERROR] - " + timedet + " - " + headerdata2 + " - " + errormessage;
-    sendtolog(data2);
+    sendtolog(data2, sendtomain);
 }
 
 
@@ -217,8 +225,8 @@ void readfromlogger() {
 //////////////////////////////////
 //// STRING TO INT CONVERSION //// 
 //////////////////////////////////
-int stringtoint(std::string values) {
-    long int valuesdetermine = 0;
+long long int stringtoint(std::string values) {
+    long long int valuesdetermine = 0;
     bool completedwhile = false;
     int timing9760 = 0;
     int timing9760max = values.length();
@@ -227,13 +235,13 @@ int stringtoint(std::string values) {
     
     // CHECK FOR NULL
     if (values.length() == 0) {
-        loginfo("RECEIVED NULL STRING TO ANALYZE! (STD->INT)", true);
+        loginfo("RECEIVED NULL STRING TO ANALYZE! (STD->INT)", true, true);
         return 0;
     }
 
     // CHECK FOR LONG INT
-    if (values.length() > 9) {
-        loginfo("RECEIVED A SUPER LONG STRING TO ANALYZE! (STD->INT)", true);
+    if (values.length() > 19) {
+        loginfo("RECEIVED A SUPER LONG STRING TO ANALYZE! (STD->INT)", true, true);
         return 0;
     }
 
@@ -291,8 +299,7 @@ int stringtoint(std::string values) {
 
             // INVALID STRING
             if (validcase != true) {
-                loginfo("AN INVALID CHARACTER WAS RECEIVED (STD->INT); THE CHARACTER WAS: ", false);
-                sendtolog(substringvalue);
+                logwarning("AN INVALID CHARACTER WAS RECEIVED (STD->INT); THE CHARACTER WAS: " + substringvalue, true, true);
                 return 0;
             }   
         } else {
@@ -309,279 +316,41 @@ int stringtoint(std::string values) {
 //////////////////////////////////
 //// INT TO STRING CONVERSION //// 
 //////////////////////////////////
-std::string inttostring(int value) {
-    std::string returnvalue = "";
-    bool single = false;
-    bool doublenum = false;
-    bool triple = false;
-    bool quad = false;
-    bool penta = false;
-    bool hexa = false;
-
-    // DETERMINE CASE
-    if (value < 9) {
-        single = true;
-        doublenum = false;
-        triple = false;
-        quad = false;
-        penta = false;
-        hexa = false;
-    } else if (value < 99) {
-        single = true;
-        doublenum = true;
-        triple = false;
-        quad = false;
-        penta = false;
-        hexa = false;
-    } else if (value < 999) {
-        single = true;
-        doublenum = true;
-        triple = true;
-        quad = false;
-        penta = false;
-        hexa = false;
-    } else if (value < 9999) {
-        single = true;
-        doublenum = true;
-        triple = true;
-        quad = true;
-        penta = false;
-        hexa = false;
-    } else if (value < 99999) {
-        single = true;
-        doublenum = true;
-        triple = true;
-        quad = true;
-        penta = true;
-        hexa = false;
-    } else if (value < 999999) {
-        single = true;
-        doublenum = true;
-        triple = true;
-        quad = true;
-        penta = true;
-        hexa = true;
-    }
-
-    // START WORK ON EACH CASE
-    if (single == true) {
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0";
-                break;
-            case 1:
-                returnvalue = "1";
-                break;
-            case 2:
-                returnvalue = "2";
-                break;
-            case 3:
-                returnvalue = "3";
-                break;
-            case 4:
-                returnvalue = "4";
-                break;
-            case 5:
-                returnvalue = "5";
-                break;
-            case 6:
-                returnvalue = "6";
-                break;
-            case 7:
-                returnvalue = "7";
-                break;
-            case 8:
-                returnvalue = "8";
-                break;
-            case 9:
-                returnvalue = "9";
-                break;
-        }
-    }
-    if (doublenum == true) {
-        value = value / 10;
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0" + returnvalue;
-                break;
-            case 1:
-                returnvalue = "1" + returnvalue;
-                break;
-            case 2:
-                returnvalue = "2" + returnvalue;
-                break;
-            case 3:
-                returnvalue = "3" + returnvalue;
-                break;
-            case 4:
-                returnvalue = "4" + returnvalue;
-                break;
-            case 5:
-                returnvalue = "5" + returnvalue;
-                break;
-            case 6:
-                returnvalue = "6" + returnvalue;
-                break;
-            case 7:
-                returnvalue = "7" + returnvalue;
-                break;
-            case 8:
-                returnvalue = "8" + returnvalue;
-                break;
-            case 9:
-                returnvalue = "9" + returnvalue;
-                break;
-        }
-    }
-    if (triple == true) {
-        value = value / 10;
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0" + returnvalue;
-                break;
-            case 1:
-                returnvalue = "1" + returnvalue;
-                break;
-            case 2:
-                returnvalue = "2" + returnvalue;
-                break;
-            case 3:
-                returnvalue = "3" + returnvalue;
-                break;
-            case 4:
-                returnvalue = "4" + returnvalue;
-                break;
-            case 5:
-                returnvalue = "5" + returnvalue;
-                break;
-            case 6:
-                returnvalue = "6" + returnvalue;
-                break;
-            case 7:
-                returnvalue = "7" + returnvalue;
-                break;
-            case 8:
-                returnvalue = "8" + returnvalue;
-                break;
-            case 9:
-                returnvalue = "9" + returnvalue;
-                break;
-        }
-    }
-    if (quad == true) {
-        value = value / 10;
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0" + returnvalue;
-                break;
-            case 1:
-                returnvalue = "1" + returnvalue;
-                break;
-            case 2:
-                returnvalue = "2" + returnvalue;
-                break;
-            case 3:
-                returnvalue = "3" + returnvalue;
-                break;
-            case 4:
-                returnvalue = "4" + returnvalue;
-                break;
-            case 5:
-                returnvalue = "5" + returnvalue;
-                break;
-            case 6:
-                returnvalue = "6" + returnvalue;
-                break;
-            case 7:
-                returnvalue = "7" + returnvalue;
-                break;
-            case 8:
-                returnvalue = "8" + returnvalue;
-                break;
-            case 9:
-                returnvalue = "9" + returnvalue;
-                break;
-        }
-    }
-    if (penta == true) {
-        value = value / 10;
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0" + returnvalue;
-                break;
-            case 1:
-                returnvalue = "1" + returnvalue;
-                break;
-            case 2:
-                returnvalue = "2" + returnvalue;
-                break;
-            case 3:
-                returnvalue = "3" + returnvalue;
-                break;
-            case 4:
-                returnvalue = "4" + returnvalue;
-                break;
-            case 5:
-                returnvalue = "5" + returnvalue;
-                break;
-            case 6:
-                returnvalue = "6" + returnvalue;
-                break;
-            case 7:
-                returnvalue = "7" + returnvalue;
-                break;
-            case 8:
-                returnvalue = "8" + returnvalue;
-                break;
-            case 9:
-                returnvalue = "9" + returnvalue;
-                break;
-        }
-    }
-    if (hexa == true) {
-        value = value / 10;
-        int numbertech = value % 10;
-        switch (numbertech) {
-            case 0:
-                returnvalue = "0" + returnvalue;
-                break;
-            case 1:
-                returnvalue = "1" + returnvalue;
-                break;
-            case 2:
-                returnvalue = "2" + returnvalue;
-                break;
-            case 3:
-                returnvalue = "3" + returnvalue;
-                break;
-            case 4:
-                returnvalue = "4" + returnvalue;
-                break;
-            case 5:
-                returnvalue = "5" + returnvalue;
-                break;
-            case 6:
-                returnvalue = "6" + returnvalue;
-                break;
-            case 7:
-                returnvalue = "7" + returnvalue;
-                break;
-            case 8:
-                returnvalue = "8" + returnvalue;
-                break;
-            case 9:
-                returnvalue = "9" + returnvalue;
-                break;
-        }
-    }
+std::string inttostring(long long int value) {
+    std::string returnvalue = std::to_string(value);
     return returnvalue;
 }
 
+
+
+/////////////////////////////
+// CONVERT STRING TO FLOAT // 
+/////////////////////////////
+float stringtofloat(std::string input) {
+    float returnvalue = 0;
+
+    try {
+        returnvalue = std::stof(input); // This will throw an exception
+    } catch (const std::invalid_argument& e) {
+        logwarning("Invalid Argument: " + input, true, true);
+        return -1;
+    } catch (const std::out_of_range& e) {
+        logwarning("Out of Range: " + input, true, true);
+        return -1;
+    }
+
+    return returnvalue;
+}
+
+
+/////////////////////////////
+// CONVERT FLOAT TO STRING //
+/////////////////////////////
+std::string floattostring(float input) {
+    std::string returnvalue = "";
+    returnvalue = std::to_string(input);
+    return returnvalue;
+}
 
 
 
@@ -600,7 +369,7 @@ int pingnetwork() {
     pingnetworkcom = pingnetworkcom + ender3;
     result = system(pingnetworkcom.c_str());
     if (result != 0) {
-        logwarning("UNABLE TO PING WEBSITE!", true);
+        logwarning("UNABLE TO PING WEBSITE!", true, true);
     }
     return result;
 }
@@ -645,12 +414,13 @@ int pingnetwork() {
 // 30 - MUR - BLOCK ALL CONTAINERS TO KILL (ACTIVE TARGET OF ATTACK)
 // 31 - TES - TEST
 // 32 - FTE - VERIFY TEST
+// 200 - LOG - Log Event to SSH Log in Main!
 int compilepacket(std::string data1, int packetinto) {
     std::string messagestring = "";
 
     // CHECK FOR DATA1 CONDITION
     if (data1 == "") {
-        logcritical("NULL DATA RECEIVED!", true);
+        logcritical("NULL DATA RECEIVED (COMPILE PACKET)!", true, true);
         return 200;
     }
 
@@ -792,9 +562,13 @@ int compilepacket(std::string data1, int packetinto) {
             messagestring = "US2: " + data1;
             sendtohost = true;
             break;
+        case 200:
+            messagestring = "LOG: " + data1;
+            sendtohost = true;
+            break;
         default:
-            logcritical("NO VALID INT RECEIVED TO CONNECT TO MAIN!", true);
-            logcritical("RECEIVED int=" + inttostring(packetinto) + " FOR:" + data1, true);
+            logcritical("NO VALID INT RECEIVED TO CONNECT TO MAIN!", true, true);
+            logcritical("RECEIVED int=" + inttostring(packetinto) + " FOR:" + data1, true, true);
             sendtohost = false;
             break;
     }
