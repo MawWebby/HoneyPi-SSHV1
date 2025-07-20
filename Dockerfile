@@ -1,5 +1,6 @@
 ##### Image
 FROM debian:latest
+ARG BUILDKIT_SBOM_SCAN_STAGE=true
 
 ##### Add Needed Linux Repos
 #RUN wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/sublimehq-archive.gpg > /dev/null
@@ -10,22 +11,42 @@ RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y sudo
 RUN apt-get install -y libssh-dev
-RUN apt-get install -y iputils-ping curl bash cron
+RUN apt-get install -y iputils-ping 
+RUN apt-get install -y git python3-pip python3-venv libssl-dev libffi-dev build-essential libpython3-dev python3-minimal authbind
+# curl bash cron
 RUN apt-get install -y apt-utils dialog
 RUN apt-get install -y openssh-client openssh-server
 RUN apt-get install -y g++
-RUN apt-get install -y libvte-dev
+#RUN apt-get install -y libvte-dev
 
-##### Install Many New Packages that were Not Originally Included?
-RUN apt-get install -y nano
 
+
+#### CREATE USER ACCOUNT FRO COWRIE
+#RUN adduser -p hello --quiet cowrie
+RUN adduser cowrie
+RUN passwd -d cowrie
+USER cowrie
+
+
+#### DOWNLOAD AND SETUP COWRIE
+RUN cd /home/cowrie && git clone http://github.com/cowrie/cowrie
+WORKDIR /home/cowrie/cowrie
+RUN python3 -m venv cowrie-env
+RUN bash -c 'source cowrie-env/bin/activate && \
+python -m pip install --upgrade pip && \
+python -m pip install --upgrade -r requirements.txt'
+RUN echo "\
+\
+" > etc/cowrie.cfg
 
 ##### Remove Standard SSH Keys
 #RUN rm -f /etc/ssh/ssh_host_rsa_key
 #RUN rm -f /etc/ssh/ssh_host_ecdsa_key
 #RUN rm -f /etc/ssh/ssh_host_ed25519_key
 
+
 ##### Set Files and Working Directory
+USER root
 COPY . /usr/src/honeypi
 WORKDIR /usr/src/honeypi
 
@@ -35,8 +56,8 @@ WORKDIR /usr/src/honeypi
 
 # MAIN FILES TO COMPILE
 #RUN g++ -o randomize randomize.cpp
-RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp VirtioCommands/authtoken.cpp mainssh.cpp virtualterminal.cpp VirtioCommands/VirtioCommands.h VirtioCommands/Commands/*.cpp -lssh
-#RUN g++ -o beta beta.cpp -lssh
+#RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp VirtioCommands/authtoken.cpp mainssh.cpp virtualterminal.cpp VirtioCommands/VirtioCommands.h VirtioCommands/Commands/*.cpp -lssh
+RUN g++ -o beta beta.cpp -lssh
 
 # TEST FILES TO COMPILE
 #RUN g++ -o beta tests/FIFOPipeExample.cpp
@@ -59,17 +80,27 @@ RUN g++ -o run running.cpp standardloops.cpp adminconsole.cpp VirtioCommands/aut
 RUN mkdir /var/rund
 RUN touch /var/rund/log.txt
 
+
 ##### Expose the SSH port
 EXPOSE 22
 
+
+##### Run as Non Root
+RUN sudo adduser --quiet nonroot
+RUN sudo passwd -d nonroot
+USER nonroot
+
+
 ##### Start Application Command
-ENTRYPOINT ["./run"]
+#ENTRYPOINT ["./run"]
+
 
 ##### Entrypoint for Beta if Testing
-#ENTRYPOINT ["./beta"]
+ENTRYPOINT ["./beta"]
+
 
 ##### Branch and Version Stuff
-LABEL Name=honeypi-guestsshV1 Version=0.6.0
+LABEL Name=honeypi-guestsshV1 Version=0.9.0
 
 
 
